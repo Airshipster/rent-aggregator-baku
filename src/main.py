@@ -237,6 +237,8 @@ def process_commands(telegram: TelegramClient | None, state: dict, state_store: 
         updates = telegram.get_updates(offset)
     except Exception:
         return
+    if not updates:
+        return
     for update in updates:
         state["update_offset"] = update["update_id"] + 1
         message = update.get("message") or {}
