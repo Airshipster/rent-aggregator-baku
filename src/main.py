@@ -103,7 +103,7 @@ def deliver_listing(telegram: TelegramClient | None, item: ListingDetail, dry_ru
     public_enabled = env_bool("ENABLE_PUBLIC_CHANNEL", False)
     delivered = False
     if dry_run:
-        print(f"DRY_RUN new {item.listing_id} {item.listing_url}")
+        print(f"DRY_RUN new {item.listing_id}")
         return True
     if telegram is None:
         return False
@@ -172,7 +172,7 @@ def run_update_check(
             exists = parser.check_exists(entry["listing_id"])
             if not exists:
                 if dry_run:
-                    print(f"DRY_RUN deleted {entry['listing_id']} {entry.get('listing_url')}")
+                    print(f"DRY_RUN deleted {entry['listing_id']}")
                 elif telegram and public_enabled:
                     telegram.send_message(os.environ["TELEGRAM_PUBLIC_CHANNEL_ID"], format_deleted_update(entry.get("listing_url") or "", entry["listing_id"]))
                 notified.add(entry["listing_id"])
