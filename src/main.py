@@ -61,23 +61,28 @@ def publish_new(
     last_seen = state.get("last_seen_listing_id")
     max_details = env_int("MAX_DETAIL_FETCHES_PER_RUN", 10)
     max_age = max(env_int("MAX_PRIVATE_AGE_HOURS", env_int("MAX_NEW_AGE_HOURS", 24)), env_int("MAX_PUBLIC_AGE_HOURS", 168))
+    backfill_ids = set(id_list(os.getenv("PRIVATE_BACKFILL_USER_IDS", "")))
     candidates = []
     seen = set()
+    global_open = True
     for item in summaries:
         if item.listing_id in seen:
             continue
         seen.add(item.listing_id)
         if item.listing_id == last_seen:
-            break
+            global_open = False
+            if not backfill_ids:
+                break
+            continue
         if not is_recent(item.updated_at, max_age):
             stats.skipped_old += 1
             continue
-        candidates.append(item)
+        candidates.append((item, global_open))
         if len(candidates) >= max_details:
             break
     candidates.reverse()
     stats.new_count = 0
-    for summary in candidates:
+    for summary, global_new in candidates:
         sleep_soft()
         try:
             detail = parser.get_detail(summary.listing_id)
@@ -90,20 +95,21 @@ def publish_new(
             if photo_dt and not is_recent(photo_dt, max_age):
                 stats.skipped_old += 1
                 continue
-            delivered = deliver_listing(telegram, detail, dry_run, stats, state)
+            delivered = deliver_listing(telegram, detail, dry_run, stats, state, global_new, backfill_ids)
             if delivered:
                 stats.new_count += 1
             if delivered and not dry_run:
                 remember_listing(state, detail)
-                state["last_seen_listing_id"] = detail.listing_id
-                state["last_seen_listing_path"] = "/" + detail.listing_url.split("/", 3)[-1]
+                if global_new:
+                    state["last_seen_listing_id"] = detail.listing_id
+                    state["last_seen_listing_path"] = "/" + detail.listing_url.split("/", 3)[-1]
                 state_store.save(state)
         except Exception as exc:
             stats.errors += 1
             stats.messages.append(f"{summary.listing_id}:{type(exc).__name__}")
 
 
-def deliver_listing(telegram: TelegramClient | None, item: ListingDetail, dry_run: bool, stats: RunStats, state: dict) -> bool:
+def deliver_listing(telegram: TelegramClient | None, item: ListingDetail, dry_run: bool, stats: RunStats, state: dict, global_new: bool, backfill_ids: set[str]) -> bool:
     private_enabled = env_bool("ENABLE_PRIVATE_FULL", True)
     public_enabled = env_bool("ENABLE_PUBLIC_CHANNEL", False)
     private_recent = is_recent(item.updated_at, env_int("MAX_PRIVATE_AGE_HOURS", 24))
@@ -115,19 +121,25 @@ def deliver_listing(telegram: TelegramClient | None, item: ListingDetail, dry_ru
     if telegram is None:
         return False
     if private_enabled and private_recent:
+        seen_by_recipient = state.setdefault("recipient_seen_listing_ids", {})
         for chat_id in private_recipients(state):
+            recipient_seen = seen_by_recipient.setdefault(chat_id, [])
+            if item.listing_id in recipient_seen or (not global_new and chat_id not in backfill_ids):
+                continue
             try:
                 telegram.send_message(chat_id, "______Следующее_объявление______", protect_content=telegram.protect)
                 telegram.send_long_message(chat_id, format_private(item), protect_content=telegram.protect)
                 if item.latitude and item.longitude:
                     telegram.send_location(chat_id, item.latitude, item.longitude, protect_content=telegram.protect)
                 telegram.send_photos(chat_id, item.image_urls, item.listing_id, env_int("MAX_IMAGES_PRIVATE", 50))
+                recipient_seen.append(item.listing_id)
+                seen_by_recipient[chat_id] = recipient_seen[-100:]
                 stats.private_sent += 1
                 delivered = True
             except Exception as exc:
                 stats.errors += 1
                 stats.messages.append(f"private:{item.listing_id}:{type(exc).__name__}")
-    if public_enabled and public_recent:
+    if global_new and public_enabled and public_recent:
         try:
             channel_id = os.environ["TELEGRAM_PUBLIC_CHANNEL_ID"]
             message = telegram.send_message(channel_id, format_public(item), link_preview_url=item.listing_url)
@@ -154,11 +166,14 @@ def approved_user_ids() -> list[str]:
     result = []
     for name, value in os.environ.items():
         if name == "APPROVED_USER_IDS" or name.startswith("APPROVED_USER_IDS_"):
-            for item in value.replace("\n", ",").split(","):
-                item = item.strip()
-                if item and item not in result:
+            for item in id_list(value):
+                if item not in result:
                     result.append(item)
     return result
+
+
+def id_list(value: str) -> list[str]:
+    return [item.strip() for item in value.replace("\n", ",").split(",") if item.strip()]
 
 
 def is_allowed_home(item: ListingDetail) -> bool:

@@ -18,6 +18,7 @@ DEFAULT_STATE = {
     "recent_listings": [],
     "deleted_notified_ids": [],
     "last_update_check_at": None,
+    "recipient_seen_listing_ids": {},
 }
 
 
@@ -33,7 +34,7 @@ class StateStore:
     def load(self) -> dict[str, Any]:
         state = dict(DEFAULT_STATE)
         loaded = None
-        if self.telegram and self.chat_id and self.chat_id != self.owner_chat_id:
+        if self.telegram and self.chat_id:
             loaded = self._load_telegram()
         if loaded is None:
             loaded = self._load_variable()
@@ -45,7 +46,7 @@ class StateStore:
 
     def save(self, state: dict[str, Any]) -> None:
         state = self._compact(state)
-        if self.telegram and self.chat_id and self.chat_id != self.owner_chat_id:
+        if self.telegram and self.chat_id:
             self._save_telegram(state)
         elif self._can_use_variable():
             self._save_variable(state)
@@ -83,7 +84,7 @@ class StateStore:
 
     def _save_file(self, state: dict[str, Any]) -> None:
         self.fallback_path.parent.mkdir(parents=True, exist_ok=True)
-        self.fallback_path.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+        self.fallback_path.write_text(json.dumps(self._public_state(state), ensure_ascii=False, indent=2), encoding="utf-8")
 
     def _can_use_variable(self) -> bool:
         return bool(os.getenv("GITHUB_TOKEN") and os.getenv("GITHUB_REPOSITORY"))
@@ -115,7 +116,7 @@ class StateStore:
             return None
 
     def _save_variable(self, state: dict[str, Any]) -> None:
-        value = json.dumps(state, ensure_ascii=False, separators=(",", ":"))
+        value = json.dumps(self._public_state(state), ensure_ascii=False, separators=(",", ":"))
         payload = {"name": self.variable_name, "value": value}
         response = requests.patch(self._variable_url(), headers=self._headers(), json=payload, timeout=20)
         if response.status_code == 404:
@@ -129,4 +130,14 @@ class StateStore:
         state["updated_at"] = datetime.now(timezone.utc).isoformat()
         state["recent_listings"] = list((state.get("recent_listings") or [])[-100:])
         state["deleted_notified_ids"] = list((state.get("deleted_notified_ids") or [])[-100:])
+        state["recipient_seen_listing_ids"] = {
+            str(key): list(value[-100:])
+            for key, value in (state.get("recipient_seen_listing_ids") or {}).items()
+            if key and isinstance(value, list)
+        }
         return state
+
+    def _public_state(self, state: dict[str, Any]) -> dict[str, Any]:
+        public = dict(state)
+        public.pop("recipient_seen_listing_ids", None)
+        return public
