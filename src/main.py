@@ -83,6 +83,9 @@ def publish_new(
             detail = parser.get_detail(summary.listing_id)
             if not detail or detail.is_deleted:
                 continue
+            if not is_allowed_home(detail):
+                stats.skipped_old += 1
+                continue
             photo_dt = image_datetime(detail.first_image_url)
             if photo_dt and not is_recent(photo_dt, max_age):
                 stats.skipped_old += 1
@@ -135,6 +138,16 @@ def deliver_listing(telegram: TelegramClient | None, item: ListingDetail, dry_ru
             stats.errors += 1
             stats.messages.append(f"public:{item.listing_id}:{type(exc).__name__}")
     return delivered
+
+
+def is_allowed_home(item: ListingDetail) -> bool:
+    text = " ".join(
+        str(value or "").lower()
+        for value in [item.building_type, item.category_slug, item.category_title, item.title]
+    )
+    allowed = ["yeni-tikili", "kohne-tikili", "köhnə tikili", "yeni tikili"]
+    return any(value in text for value in allowed)
+
 
 def remember_listing(state: dict, item: ListingDetail) -> None:
     recent = [entry for entry in state.get("recent_listings", []) if entry.get("listing_id") != item.listing_id]

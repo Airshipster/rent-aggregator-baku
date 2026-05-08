@@ -29,6 +29,8 @@ class ListingDetail:
     total_floors: int | None
     repair_status: str | None
     building_type: str | None
+    category_slug: str | None
+    category_title: str | None
     seller_name: str | None
     seller_type: str
     description_full: str | None

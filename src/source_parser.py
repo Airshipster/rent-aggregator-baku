@@ -147,6 +147,8 @@ class SourceParser:
             total_floors=node.get("floors"),
             repair_status=self._repair(node.get("hasRepair")),
             building_type=node.get("buildingTypeName") or category.get("name"),
+            category_slug=category.get("slug"),
+            category_title=category.get("title"),
             seller_name=node.get("contactName"),
             seller_type=seller_type,
             description_full=node.get("description"),

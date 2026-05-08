@@ -41,10 +41,18 @@ def fmt_title(item: ListingDetail) -> str:
 
 
 def fmt_specs(item: ListingDetail) -> str:
-    area = f"{item.area_m2:g} m²" if item.area_m2 is not None else "? m²"
-    floors = f"{item.floor or '?'}/{item.total_floors or '?'}"
-    repair = fmt_repair(item.repair_status or "")
-    return f"{area} · {floors} · {repair}"
+    parts = []
+    if item.area_m2 is not None:
+        parts.append(f"{item.area_m2:g} m²")
+    if item.floor is not None and item.total_floors is not None:
+        parts.append(f"{item.floor}/{item.total_floors}")
+    elif item.floor is not None:
+        parts.append(f"{item.floor} mərtəbə")
+    elif item.total_floors is not None:
+        parts.append(f"{item.total_floors} mərtəbəli bina")
+    if item.repair_status:
+        parts.append(fmt_repair(item.repair_status))
+    return " · ".join(parts) or "Ətraflı məlumat elanda"
 
 
 def fmt_repair(value: str) -> str:
