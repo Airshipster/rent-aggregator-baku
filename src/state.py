@@ -107,7 +107,7 @@ class StateStore:
         if not self._can_use_variable():
             return None
         response = requests.get(self._variable_url(), headers=self._headers(), timeout=20)
-        if response.status_code == 404:
+        if response.status_code in {403, 404}:
             return None
         response.raise_for_status()
         value = response.json().get("value") or ""
