@@ -34,7 +34,9 @@ class StateStore:
     def load(self) -> dict[str, Any]:
         state = dict(DEFAULT_STATE)
         loaded = None
-        if self.telegram and self.chat_id:
+        if self.telegram and self.chat_id and self.chat_id == self.owner_chat_id:
+            self._cleanup_owner_pinned_state()
+        if self._has_state_chat():
             loaded = self._load_telegram()
         if loaded is None:
             loaded = self._load_variable()
@@ -46,7 +48,7 @@ class StateStore:
 
     def save(self, state: dict[str, Any]) -> None:
         state = self._compact(state)
-        if self.telegram and self.chat_id:
+        if self._has_state_chat():
             self._save_telegram(state)
         elif self._can_use_variable():
             self._save_variable(state)
@@ -114,6 +116,28 @@ class StateStore:
             return json.loads(value)
         except json.JSONDecodeError:
             return None
+
+    def _has_state_chat(self) -> bool:
+        return bool(self.telegram and self.chat_id and self.chat_id != self.owner_chat_id)
+
+    def _cleanup_owner_pinned_state(self) -> None:
+        try:
+            chat = self.telegram.get_chat(self.owner_chat_id)
+            pinned = chat.get("pinned_message") or {}
+            text = pinned.get("text") or ""
+            message_id = pinned.get("message_id")
+            if message_id and self._looks_like_state(text):
+                self.telegram.unpin_message(self.owner_chat_id, message_id)
+                self.telegram.delete_message(self.owner_chat_id, message_id)
+        except Exception:
+            pass
+
+    def _looks_like_state(self, text: str) -> bool:
+        try:
+            value = json.loads(text)
+        except json.JSONDecodeError:
+            return False
+        return isinstance(value, dict) and "last_seen_listing_id" in value and "recent_listings" in value
 
     def _save_variable(self, state: dict[str, Any]) -> None:
         value = json.dumps(self._public_state(state), ensure_ascii=False, separators=(",", ":"))
