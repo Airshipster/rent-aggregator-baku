@@ -90,7 +90,7 @@ def publish_new(
             if photo_dt and not is_recent(photo_dt, max_age):
                 stats.skipped_old += 1
                 continue
-            delivered = deliver_listing(telegram, detail, dry_run, stats)
+            delivered = deliver_listing(telegram, detail, dry_run, stats, state)
             if delivered:
                 stats.new_count += 1
             if delivered and not dry_run:
@@ -103,7 +103,7 @@ def publish_new(
             stats.messages.append(f"{summary.listing_id}:{type(exc).__name__}")
 
 
-def deliver_listing(telegram: TelegramClient | None, item: ListingDetail, dry_run: bool, stats: RunStats) -> bool:
+def deliver_listing(telegram: TelegramClient | None, item: ListingDetail, dry_run: bool, stats: RunStats, state: dict) -> bool:
     private_enabled = env_bool("ENABLE_PRIVATE_FULL", True)
     public_enabled = env_bool("ENABLE_PUBLIC_CHANNEL", False)
     private_recent = is_recent(item.updated_at, env_int("MAX_PRIVATE_AGE_HOURS", 24))
@@ -115,18 +115,18 @@ def deliver_listing(telegram: TelegramClient | None, item: ListingDetail, dry_ru
     if telegram is None:
         return False
     if private_enabled and private_recent:
-        try:
-            owner_chat_id = os.environ["TELEGRAM_OWNER_CHAT_ID"]
-            telegram.send_message(owner_chat_id, "______Следующее_объявление______", protect_content=telegram.protect)
-            telegram.send_long_message(owner_chat_id, format_private(item), protect_content=telegram.protect)
-            if item.latitude and item.longitude:
-                telegram.send_location(owner_chat_id, item.latitude, item.longitude, protect_content=telegram.protect)
-            telegram.send_photos(owner_chat_id, item.image_urls, item.listing_id, env_int("MAX_IMAGES_PRIVATE", 50))
-            stats.private_sent += 1
-            delivered = True
-        except Exception as exc:
-            stats.errors += 1
-            stats.messages.append(f"private:{item.listing_id}:{type(exc).__name__}")
+        for chat_id in private_recipients(state):
+            try:
+                telegram.send_message(chat_id, "______Следующее_объявление______", protect_content=telegram.protect)
+                telegram.send_long_message(chat_id, format_private(item), protect_content=telegram.protect)
+                if item.latitude and item.longitude:
+                    telegram.send_location(chat_id, item.latitude, item.longitude, protect_content=telegram.protect)
+                telegram.send_photos(chat_id, item.image_urls, item.listing_id, env_int("MAX_IMAGES_PRIVATE", 50))
+                stats.private_sent += 1
+                delivered = True
+            except Exception as exc:
+                stats.errors += 1
+                stats.messages.append(f"private:{item.listing_id}:{type(exc).__name__}")
     if public_enabled and public_recent:
         try:
             channel_id = os.environ["TELEGRAM_PUBLIC_CHANNEL_ID"]
@@ -138,6 +138,16 @@ def deliver_listing(telegram: TelegramClient | None, item: ListingDetail, dry_ru
             stats.errors += 1
             stats.messages.append(f"public:{item.listing_id}:{type(exc).__name__}")
     return delivered
+
+
+def private_recipients(state: dict) -> list[str]:
+    values = [os.environ["TELEGRAM_OWNER_CHAT_ID"]]
+    values.extend(str(user_id) for user_id in state.get("approved_user_ids", []))
+    result = []
+    for value in values:
+        if value and value not in result:
+            result.append(value)
+    return result
 
 
 def is_allowed_home(item: ListingDetail) -> bool:
