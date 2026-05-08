@@ -142,11 +142,22 @@ def deliver_listing(telegram: TelegramClient | None, item: ListingDetail, dry_ru
 
 def private_recipients(state: dict) -> list[str]:
     values = [os.environ["TELEGRAM_OWNER_CHAT_ID"]]
-    values.extend(str(user_id) for user_id in state.get("approved_user_ids", []))
+    values.extend(approved_user_ids())
     result = []
     for value in values:
         if value and value not in result:
             result.append(value)
+    return result
+
+
+def approved_user_ids() -> list[str]:
+    result = []
+    for name, value in os.environ.items():
+        if name == "APPROVED_USER_IDS" or name.startswith("APPROVED_USER_IDS_"):
+            for item in value.replace("\n", ",").split(","):
+                item = item.strip()
+                if item and item not in result:
+                    result.append(item)
     return result
 
 
@@ -220,8 +231,7 @@ def process_commands(telegram: TelegramClient | None, state: dict, state_store: 
         return
     owner_user_id = str(os.environ["TELEGRAM_OWNER_USER_ID"])
     allowed_chats = {str(os.environ.get("TELEGRAM_OWNER_CHAT_ID", "")), str(os.environ.get("TELEGRAM_PUBLIC_CHANNEL_ID", "")), str(os.environ.get("TELEGRAM_STATE_CHAT_ID", ""))}
-    approved_users = {str(x) for x in state.get("approved_user_ids", [])}
-    pending_users = {str(x) for x in state.get("pending_user_ids", [])}
+    approved_users = set(approved_user_ids())
     offset = state.get("update_offset")
     try:
         updates = telegram.get_updates(offset)
@@ -245,17 +255,14 @@ def process_commands(telegram: TelegramClient | None, state: dict, state_store: 
             continue
         if user_id != owner_user_id and user_id not in approved_users:
             if chat.get("type") == "private" and chat_id:
-                if user_id and user_id not in pending_users:
-                    pending_users.add(user_id)
-                    state["pending_user_ids"] = sorted(pending_users)
-                    name = " ".join(x for x in [user.get("first_name"), user.get("last_name"), user.get("username")] if x)
-                    try:
-                        telegram.send_message(
-                            os.environ["TELEGRAM_OWNER_CHAT_ID"],
-                            f"Новый пользователь просит доступ:\nuser_id={user_id}\nchat_id={chat_id}\n{name}\n\nОдобрить: /approve {user_id}\nОтклонить: /deny {user_id}",
-                        )
-                    except Exception:
-                        pass
+                name = " ".join(x for x in [user.get("first_name"), user.get("last_name"), user.get("username")] if x)
+                try:
+                    telegram.send_message(
+                        os.environ["TELEGRAM_OWNER_CHAT_ID"],
+                        f"Новый пользователь просит доступ:\nuser_id={user_id}\nchat_id={chat_id}\n{name}\n\nДобавить в GitHub Secret APPROVED_USER_IDS.",
+                    )
+                except Exception:
+                    pass
                 try:
                     telegram.send_message(chat_id, "Sorğu göndərildi.")
                 except Exception:
@@ -280,15 +287,9 @@ def process_commands(telegram: TelegramClient | None, state: dict, state_store: 
             telegram.send_message(chat_id, f"Set last_seen_id={listing_id}")
         elif text.startswith("/approve "):
             approved_id = text.split(maxsplit=1)[1].strip()
-            approved_users.add(approved_id)
-            pending_users.discard(approved_id)
-            state["approved_user_ids"] = sorted(approved_users)
-            state["pending_user_ids"] = sorted(pending_users)
-            telegram.send_message(chat_id, f"Approved {approved_id}")
+            telegram.send_message(chat_id, f"Добавь {approved_id} в GitHub Secret APPROVED_USER_IDS. Секреты не обновляются из workflow.")
         elif text.startswith("/deny "):
             denied_id = text.split(maxsplit=1)[1].strip()
-            pending_users.discard(denied_id)
-            state["pending_user_ids"] = sorted(pending_users)
             telegram.send_message(chat_id, f"Denied {denied_id}")
     state_store.save(state)
 
