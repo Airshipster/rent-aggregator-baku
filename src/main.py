@@ -59,7 +59,7 @@ def publish_new(
 ) -> None:
     last_seen = state.get("last_seen_listing_id")
     max_details = env_int("MAX_DETAIL_FETCHES_PER_RUN", 10)
-    max_age = env_int("MAX_NEW_AGE_HOURS", 24)
+    max_age = max(env_int("MAX_PRIVATE_AGE_HOURS", env_int("MAX_NEW_AGE_HOURS", 24)), env_int("MAX_PUBLIC_AGE_HOURS", 168))
     candidates = []
     seen = set()
     for item in summaries:
@@ -86,8 +86,9 @@ def publish_new(
             if photo_dt and not is_recent(photo_dt, max_age):
                 stats.skipped_old += 1
                 continue
-            stats.new_count += 1
             delivered = deliver_listing(telegram, detail, dry_run, stats)
+            if delivered:
+                stats.new_count += 1
             if delivered and not dry_run:
                 remember_listing(state, detail)
                 state["last_seen_listing_id"] = detail.listing_id
@@ -101,16 +102,18 @@ def publish_new(
 def deliver_listing(telegram: TelegramClient | None, item: ListingDetail, dry_run: bool, stats: RunStats) -> bool:
     private_enabled = env_bool("ENABLE_PRIVATE_FULL", True)
     public_enabled = env_bool("ENABLE_PUBLIC_CHANNEL", False)
+    private_recent = is_recent(item.updated_at, env_int("MAX_PRIVATE_AGE_HOURS", 24))
+    public_recent = is_recent(image_datetime(item.first_image_url) or item.updated_at, env_int("MAX_PUBLIC_AGE_HOURS", 168))
     delivered = False
     if dry_run:
         print(f"DRY_RUN new {item.listing_id}")
         return True
     if telegram is None:
         return False
-    if private_enabled:
+    if private_enabled and private_recent:
         try:
             owner_chat_id = os.environ["TELEGRAM_OWNER_CHAT_ID"]
-            telegram.send_message(owner_chat_id, "____________________________", protect_content=telegram.protect)
+            telegram.send_message(owner_chat_id, "Следующее_объявление_________________________________________", protect_content=telegram.protect)
             telegram.send_long_message(owner_chat_id, format_private(item), protect_content=telegram.protect)
             if item.latitude and item.longitude:
                 telegram.send_location(owner_chat_id, item.latitude, item.longitude, protect_content=telegram.protect)
@@ -120,10 +123,10 @@ def deliver_listing(telegram: TelegramClient | None, item: ListingDetail, dry_ru
         except Exception as exc:
             stats.errors += 1
             stats.messages.append(f"private:{item.listing_id}:{type(exc).__name__}")
-    if public_enabled:
+    if public_enabled and public_recent:
         try:
             channel_id = os.environ["TELEGRAM_PUBLIC_CHANNEL_ID"]
-            message = telegram.send_message(channel_id, format_public(item), link_preview_url=item.first_image_url or item.listing_url)
+            message = telegram.send_message(channel_id, format_public(item), link_preview_url=item.listing_url)
             _ = message.get("message_id")
             stats.public_sent += 1
             delivered = True
@@ -192,6 +195,8 @@ def process_commands(telegram: TelegramClient | None, state: dict, state_store: 
         return
     owner_user_id = str(os.environ["TELEGRAM_OWNER_USER_ID"])
     allowed_chats = {str(os.environ.get("TELEGRAM_OWNER_CHAT_ID", "")), str(os.environ.get("TELEGRAM_PUBLIC_CHANNEL_ID", "")), str(os.environ.get("TELEGRAM_STATE_CHAT_ID", ""))}
+    approved_users = {str(x) for x in state.get("approved_user_ids", [])}
+    pending_users = {str(x) for x in state.get("pending_user_ids", [])}
     offset = state.get("update_offset")
     try:
         updates = telegram.get_updates(offset)
@@ -211,10 +216,21 @@ def process_commands(telegram: TelegramClient | None, state: dict, state_store: 
             except Exception:
                 pass
             continue
-        if user_id != owner_user_id:
+        if user_id != owner_user_id and user_id not in approved_users:
             if chat.get("type") == "private" and chat_id:
+                if user_id and user_id not in pending_users:
+                    pending_users.add(user_id)
+                    state["pending_user_ids"] = sorted(pending_users)
+                    name = " ".join(x for x in [user.get("first_name"), user.get("last_name"), user.get("username")] if x)
+                    try:
+                        telegram.send_message(
+                            os.environ["TELEGRAM_OWNER_CHAT_ID"],
+                            f"Новый пользователь просит доступ:\nuser_id={user_id}\nchat_id={chat_id}\n{name}\n\nОдобрить: /approve {user_id}\nОтклонить: /deny {user_id}",
+                        )
+                    except Exception:
+                        pass
                 try:
-                    telegram.send_message(chat_id, "Bot aktiv deyil.")
+                    telegram.send_message(chat_id, "Sorğu göndərildi.")
                 except Exception:
                     pass
             continue
@@ -235,6 +251,18 @@ def process_commands(telegram: TelegramClient | None, state: dict, state_store: 
             state["last_seen_listing_id"] = listing_id
             state["last_seen_listing_url"] = None
             telegram.send_message(chat_id, f"Set last_seen_id={listing_id}")
+        elif text.startswith("/approve "):
+            approved_id = text.split(maxsplit=1)[1].strip()
+            approved_users.add(approved_id)
+            pending_users.discard(approved_id)
+            state["approved_user_ids"] = sorted(approved_users)
+            state["pending_user_ids"] = sorted(pending_users)
+            telegram.send_message(chat_id, f"Approved {approved_id}")
+        elif text.startswith("/deny "):
+            denied_id = text.split(maxsplit=1)[1].strip()
+            pending_users.discard(denied_id)
+            state["pending_user_ids"] = sorted(pending_users)
+            telegram.send_message(chat_id, f"Denied {denied_id}")
     state_store.save(state)
 
 

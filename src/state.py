@@ -18,6 +18,8 @@ DEFAULT_STATE = {
     "recent_listings": [],
     "deleted_notified_ids": [],
     "last_update_check_at": None,
+    "approved_user_ids": [],
+    "pending_user_ids": [],
 }
 
 

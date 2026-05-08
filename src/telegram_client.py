@@ -120,10 +120,7 @@ class TelegramClient:
     def send_photos(self, chat_id: str, urls: list[str], listing_id: str, max_images: int) -> int:
         sent = 0
         urls = urls[:max_images]
-        for start in range(0, len(urls), 10):
-            chunk = urls[start : start + 10]
-            if start >= 10:
-                self.send_message(chat_id, f"Продолжение фотографий к объявлению №{listing_id}", protect_content=self.protect)
+        for chunk in self._photo_chunks(urls):
             if len(chunk) == 1:
                 self._send_one_photo(chat_id, chunk[0])
                 sent += 1
@@ -131,6 +128,20 @@ class TelegramClient:
                 self._send_group(chat_id, chunk)
                 sent += len(chunk)
         return sent
+
+    def _photo_chunks(self, urls: list[str]) -> list[list[str]]:
+        if len(urls) <= 10:
+            return [urls] if urls else []
+        groups = (len(urls) + 9) // 10
+        base = len(urls) // groups
+        extra = len(urls) % groups
+        chunks = []
+        start = 0
+        for index in range(groups):
+            size = base + (1 if index < extra else 0)
+            chunks.append(urls[start : start + size])
+            start += size
+        return chunks
 
     def _send_one_photo(self, chat_id: str, url: str) -> None:
         try:
