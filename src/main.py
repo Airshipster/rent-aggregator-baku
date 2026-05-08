@@ -227,7 +227,7 @@ def run_update_check(
 
 
 def process_commands(telegram: TelegramClient | None, state: dict, state_store: StateStore, dry_run: bool) -> None:
-    if telegram is None or dry_run:
+    if telegram is None:
         return
     owner_user_id = str(os.environ["TELEGRAM_OWNER_USER_ID"])
     allowed_chats = {str(os.environ.get("TELEGRAM_OWNER_CHAT_ID", "")), str(os.environ.get("TELEGRAM_PUBLIC_CHANNEL_ID", "")), str(os.environ.get("TELEGRAM_STATE_CHAT_ID", ""))}
