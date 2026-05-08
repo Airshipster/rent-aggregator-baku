@@ -24,6 +24,7 @@ def format_private(item: ListingDetail) -> str:
         escape(item.description_full or "не найдено"),
         "",
         f"Карта: {escape(item.google_maps_url or 'не найдена')}",
+        "",
         f"Объявление: {escape(item.listing_url)}",
     ]
     return "\n".join(lines)
