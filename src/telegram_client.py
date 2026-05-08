@@ -171,3 +171,9 @@ class TelegramClient:
 
     def leave_chat(self, chat_id: str) -> None:
         self.call("leaveChat", {"chat_id": chat_id})
+
+    def delete_message(self, chat_id: str, message_id: int) -> None:
+        self.call("deleteMessage", {"chat_id": chat_id, "message_id": message_id})
+
+    def unpin_message(self, chat_id: str, message_id: int) -> None:
+        self.call("unpinChatMessage", {"chat_id": chat_id, "message_id": message_id})

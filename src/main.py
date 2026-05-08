@@ -110,6 +110,7 @@ def deliver_listing(telegram: TelegramClient | None, item: ListingDetail, dry_ru
     if private_enabled:
         try:
             owner_chat_id = os.environ["TELEGRAM_OWNER_CHAT_ID"]
+            telegram.send_message(owner_chat_id, "____________________________", protect_content=telegram.protect)
             telegram.send_long_message(owner_chat_id, format_private(item), protect_content=telegram.protect)
             if item.latitude and item.longitude:
                 telegram.send_location(owner_chat_id, item.latitude, item.longitude, protect_content=telegram.protect)
