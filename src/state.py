@@ -11,7 +11,7 @@ from .telegram_client import TelegramClient
 
 DEFAULT_STATE = {
     "last_seen_listing_id": None,
-    "last_seen_listing_url": None,
+    "last_seen_listing_path": None,
     "updated_at": None,
     "paused": False,
     "update_offset": None,
@@ -122,6 +122,9 @@ class StateStore:
         response = requests.patch(self._variable_url(), headers=self._headers(), json=payload, timeout=20)
         if response.status_code == 404:
             response = requests.post(self._variables_url(), headers=self._headers(), json=payload, timeout=20)
+        if response.status_code == 403:
+            self._save_file(state)
+            return
         response.raise_for_status()
 
     def _compact(self, state: dict[str, Any]) -> dict[str, Any]:

@@ -41,7 +41,8 @@ def main() -> None:
 
 def load_candidate_summaries(parser: SourceParser, state: dict) -> list[ListingSummary]:
     max_per_run = env_int("MAX_LISTINGS_PER_RUN", 20)
-    first_page = parser.list_recent(max_per_run, pages=1)
+    pages = env_int("LIST_PAGES_PER_RUN", 1)
+    first_page = parser.list_recent(max_per_run, pages=pages)
     last_seen = state.get("last_seen_listing_id")
     if not last_seen or any(item.listing_id == last_seen for item in first_page):
         return first_page
@@ -92,7 +93,7 @@ def publish_new(
             if delivered and not dry_run:
                 remember_listing(state, detail)
                 state["last_seen_listing_id"] = detail.listing_id
-                state["last_seen_listing_url"] = detail.listing_url
+                state["last_seen_listing_path"] = "/" + detail.listing_url.split("/", 3)[-1]
                 state_store.save(state)
         except Exception as exc:
             stats.errors += 1
@@ -140,7 +141,7 @@ def remember_listing(state: dict, item: ListingDetail) -> None:
     recent.append(
         {
             "listing_id": item.listing_id,
-            "listing_url": item.listing_url,
+            "listing_path": "/" + item.listing_url.split("/", 3)[-1],
             "updated_at": item.updated_at.isoformat() if item.updated_at else None,
         }
     )
@@ -178,7 +179,8 @@ def run_update_check(
                 if dry_run:
                     print(f"DRY_RUN deleted {entry['listing_id']}")
                 elif telegram and public_enabled:
-                    telegram.send_message(os.environ["TELEGRAM_PUBLIC_CHANNEL_ID"], format_deleted_update(entry.get("listing_url") or "", entry["listing_id"]))
+                    url = entry.get("listing_path") or ""
+                    telegram.send_message(os.environ["TELEGRAM_PUBLIC_CHANNEL_ID"], format_deleted_update(url, entry["listing_id"]))
                 notified.add(entry["listing_id"])
                 stats.updates_sent += 1
         except Exception as exc:
@@ -208,6 +210,8 @@ def process_commands(telegram: TelegramClient | None, state: dict, state_store: 
         chat = message.get("chat") or {}
         chat_id = str(chat.get("id") or "")
         user = message.get("from") or {}
+        if user.get("is_bot"):
+            continue
         user_id = str(user.get("id") or "")
         text = (message.get("text") or "").strip()
         if chat_id and chat_id not in allowed_chats and chat.get("type") != "private":
@@ -249,7 +253,7 @@ def process_commands(telegram: TelegramClient | None, state: dict, state_store: 
         elif text.startswith("/setlast "):
             listing_id = text.split(maxsplit=1)[1].strip()
             state["last_seen_listing_id"] = listing_id
-            state["last_seen_listing_url"] = None
+            state["last_seen_listing_path"] = None
             telegram.send_message(chat_id, f"Set last_seen_id={listing_id}")
         elif text.startswith("/approve "):
             approved_id = text.split(maxsplit=1)[1].strip()
