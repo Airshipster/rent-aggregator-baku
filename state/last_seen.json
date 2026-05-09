@@ -1,7 +1,7 @@
 {
   "last_seen_listing_id": "6116682",
   "last_seen_listing_path": "/items/6116682",
-  "updated_at": "2026-05-09T21:08:26.826190+00:00",
+  "updated_at": "2026-05-09T22:42:19.554492+00:00",
   "paused": false,
   "update_offset": 681925284,
   "recent_listings": [
@@ -207,5 +207,5 @@
     }
   ],
   "deleted_notified_ids": [],
-  "last_update_check_at": "2026-05-09T21:08:05.518209+00:00"
+  "last_update_check_at": "2026-05-09T22:41:58.908393+00:00"
 }
