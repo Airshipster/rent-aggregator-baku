@@ -1,30 +1,10 @@
 {
-  "last_seen_listing_id": "6107886",
-  "last_seen_listing_path": "/items/6107886",
-  "updated_at": "2026-05-12T10:24:42.724888+00:00",
+  "last_seen_listing_id": "6123642",
+  "last_seen_listing_path": "/items/6123642",
+  "updated_at": "2026-05-12T12:13:55.482207+00:00",
   "paused": false,
   "update_offset": 681925284,
   "recent_listings": [
-    {
-      "listing_id": "6115025",
-      "listing_path": "/items/6115025",
-      "updated_at": "2026-05-09T14:36:21+04:00"
-    },
-    {
-      "listing_id": "6115030",
-      "listing_path": "/items/6115030",
-      "updated_at": "2026-05-09T14:36:13+04:00"
-    },
-    {
-      "listing_id": "6115298",
-      "listing_path": "/items/6115298",
-      "updated_at": "2026-05-09T15:28:16+04:00"
-    },
-    {
-      "listing_id": "6115300",
-      "listing_path": "/items/6115300",
-      "updated_at": "2026-05-09T15:28:45+04:00"
-    },
     {
       "listing_id": "6115488",
       "listing_path": "/items/6115488",
@@ -504,11 +484,31 @@
       "listing_id": "6107886",
       "listing_path": "/items/6107886",
       "updated_at": "2026-05-12T14:09:08+04:00"
+    },
+    {
+      "listing_id": "6123628",
+      "listing_path": "/items/6123628",
+      "updated_at": "2026-05-12T16:10:38+04:00"
+    },
+    {
+      "listing_id": "6123632",
+      "listing_path": "/items/6123632",
+      "updated_at": "2026-05-12T16:10:49+04:00"
+    },
+    {
+      "listing_id": "6123640",
+      "listing_path": "/items/6123640",
+      "updated_at": "2026-05-12T16:11:38+04:00"
+    },
+    {
+      "listing_id": "6123642",
+      "listing_path": "/items/6123642",
+      "updated_at": "2026-05-12T16:11:51+04:00"
     }
   ],
   "deleted_notified_ids": [
-    "6115899",
-    "6098311"
+    "6098311",
+    "6115899"
   ],
-  "last_update_check_at": "2026-05-12T10:24:22.254105+00:00"
+  "last_update_check_at": "2026-05-12T12:13:34.561622+00:00"
 }
