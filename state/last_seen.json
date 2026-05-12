@@ -1,35 +1,10 @@
 {
-  "last_seen_listing_id": "6121835",
-  "last_seen_listing_path": "/items/6121835",
-  "updated_at": "2026-05-12T04:51:57.753132+00:00",
+  "last_seen_listing_id": "6122203",
+  "last_seen_listing_path": "/items/6122203",
+  "updated_at": "2026-05-12T07:44:57.889170+00:00",
   "paused": false,
   "update_offset": 681925284,
   "recent_listings": [
-    {
-      "listing_id": "6108987",
-      "listing_path": "/items/6108987",
-      "updated_at": "2026-05-09T10:07:04+04:00"
-    },
-    {
-      "listing_id": "6113956",
-      "listing_path": "/items/6113956",
-      "updated_at": "2026-05-09T10:07:34+04:00"
-    },
-    {
-      "listing_id": "6114348",
-      "listing_path": "/items/6114348",
-      "updated_at": "2026-05-09T12:04:37+04:00"
-    },
-    {
-      "listing_id": "6114347",
-      "listing_path": "/items/6114347",
-      "updated_at": "2026-05-09T12:05:11+04:00"
-    },
-    {
-      "listing_id": "6114353",
-      "listing_path": "/items/6114353",
-      "updated_at": "2026-05-09T12:05:14+04:00"
-    },
     {
       "listing_id": "6114355",
       "listing_path": "/items/6114355",
@@ -504,10 +479,35 @@
       "listing_id": "6121835",
       "listing_path": "/items/6121835",
       "updated_at": "2026-05-12T08:42:22+04:00"
+    },
+    {
+      "listing_id": "6119168",
+      "listing_path": "/items/6119168",
+      "updated_at": "2026-05-12T11:32:59+04:00"
+    },
+    {
+      "listing_id": "6118999",
+      "listing_path": "/items/6118999",
+      "updated_at": "2026-05-12T11:33:03+04:00"
+    },
+    {
+      "listing_id": "6122200",
+      "listing_path": "/items/6122200",
+      "updated_at": "2026-05-12T11:33:51+04:00"
+    },
+    {
+      "listing_id": "6122202",
+      "listing_path": "/items/6122202",
+      "updated_at": "2026-05-12T11:36:50+04:00"
+    },
+    {
+      "listing_id": "6122203",
+      "listing_path": "/items/6122203",
+      "updated_at": "2026-05-12T11:34:07+04:00"
     }
   ],
   "deleted_notified_ids": [
     "6098311"
   ],
-  "last_update_check_at": "2026-05-12T04:51:34.275159+00:00"
+  "last_update_check_at": "2026-05-12T07:44:36.124221+00:00"
 }
