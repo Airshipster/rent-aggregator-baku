@@ -1,30 +1,10 @@
 {
-  "last_seen_listing_id": "6127975",
-  "last_seen_listing_path": "/items/6127975",
-  "updated_at": "2026-05-13T17:34:23.361103+00:00",
+  "last_seen_listing_id": "6128089",
+  "last_seen_listing_path": "/items/6128089",
+  "updated_at": "2026-05-13T19:21:52.976458+00:00",
   "paused": false,
   "update_offset": 681925284,
   "recent_listings": [
-    {
-      "listing_id": "6118713",
-      "listing_path": "/items/6118713",
-      "updated_at": "2026-05-10T23:48:12+04:00"
-    },
-    {
-      "listing_id": "6118719",
-      "listing_path": "/items/6118719",
-      "updated_at": "2026-05-10T23:53:15+04:00"
-    },
-    {
-      "listing_id": "6118725",
-      "listing_path": "/items/6118725",
-      "updated_at": "2026-05-10T23:59:21+04:00"
-    },
-    {
-      "listing_id": "6118727",
-      "listing_path": "/items/6118727",
-      "updated_at": "2026-05-11T00:00:06+04:00"
-    },
     {
       "listing_id": "6118763",
       "listing_path": "/items/6118763",
@@ -504,17 +484,37 @@
       "listing_id": "6127975",
       "listing_path": "/items/6127975",
       "updated_at": "2026-05-13T21:32:35+04:00"
+    },
+    {
+      "listing_id": "6095489",
+      "listing_path": "/items/6095489",
+      "updated_at": "2026-05-13T23:04:40+04:00"
+    },
+    {
+      "listing_id": "6120565",
+      "listing_path": "/items/6120565",
+      "updated_at": "2026-05-13T23:05:01+04:00"
+    },
+    {
+      "listing_id": "6128088",
+      "listing_path": "/items/6128088",
+      "updated_at": "2026-05-13T23:16:20+04:00"
+    },
+    {
+      "listing_id": "6128089",
+      "listing_path": "/items/6128089",
+      "updated_at": "2026-05-13T23:16:34+04:00"
     }
   ],
   "deleted_notified_ids": [
-    "6116707",
     "6116260",
-    "6118727",
-    "6116865",
+    "6098311",
+    "6116707",
     "6116682",
+    "6118727",
     "6115899",
     "6116691",
-    "6098311"
+    "6116865"
   ],
-  "last_update_check_at": "2026-05-13T17:34:02.037693+00:00"
+  "last_update_check_at": "2026-05-13T19:21:34.997682+00:00"
 }
