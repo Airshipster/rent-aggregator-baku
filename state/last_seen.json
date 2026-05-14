@@ -1,35 +1,10 @@
 {
-  "last_seen_listing_id": "6131155",
-  "last_seen_listing_path": "/items/6131155",
-  "updated_at": "2026-05-14T19:16:07.102230+00:00",
+  "last_seen_listing_id": "6131257",
+  "last_seen_listing_path": "/items/6131257",
+  "updated_at": "2026-05-14T20:48:39.832641+00:00",
   "paused": false,
   "update_offset": 681925284,
   "recent_listings": [
-    {
-      "listing_id": "6117579",
-      "listing_path": "/items/6117579",
-      "updated_at": "2026-05-12T00:08:06+04:00"
-    },
-    {
-      "listing_id": "6121785",
-      "listing_path": "/items/6121785",
-      "updated_at": "2026-05-12T00:59:53+04:00"
-    },
-    {
-      "listing_id": "6118654",
-      "listing_path": "/items/6118654",
-      "updated_at": "2026-05-12T01:25:35+04:00"
-    },
-    {
-      "listing_id": "6113142",
-      "listing_path": "/items/6113142",
-      "updated_at": "2026-05-12T04:43:37+04:00"
-    },
-    {
-      "listing_id": "6117985",
-      "listing_path": "/items/6117985",
-      "updated_at": "2026-05-12T04:48:35+04:00"
-    },
     {
       "listing_id": "6104847",
       "listing_path": "/items/6104847",
@@ -504,17 +479,42 @@
       "listing_id": "6131155",
       "listing_path": "/items/6131155",
       "updated_at": "2026-05-14T23:10:01+04:00"
+    },
+    {
+      "listing_id": "6123137",
+      "listing_path": "/items/6123137",
+      "updated_at": "2026-05-15T00:33:36+04:00"
+    },
+    {
+      "listing_id": "6122903",
+      "listing_path": "/items/6122903",
+      "updated_at": "2026-05-15T00:33:52+04:00"
+    },
+    {
+      "listing_id": "6131251",
+      "listing_path": "/items/6131251",
+      "updated_at": "2026-05-15T00:43:43+04:00"
+    },
+    {
+      "listing_id": "6127329",
+      "listing_path": "/items/6127329",
+      "updated_at": "2026-05-15T00:45:37+04:00"
+    },
+    {
+      "listing_id": "6131257",
+      "listing_path": "/items/6131257",
+      "updated_at": "2026-05-15T00:46:48+04:00"
     }
   ],
   "deleted_notified_ids": [
-    "6116260",
-    "6116707",
-    "6115899",
     "6116865",
     "6116691",
+    "6115899",
+    "6116707",
     "6118727",
+    "6116682",
     "6098311",
-    "6116682"
+    "6116260"
   ],
-  "last_update_check_at": "2026-05-14T19:15:45.316531+00:00"
+  "last_update_check_at": "2026-05-14T20:48:12.533459+00:00"
 }
