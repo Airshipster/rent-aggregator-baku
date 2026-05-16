@@ -1,30 +1,10 @@
 {
-  "last_seen_listing_id": "6135175",
-  "last_seen_listing_path": "/items/6135175",
-  "updated_at": "2026-05-16T10:08:20.222279+00:00",
+  "last_seen_listing_id": "6135493",
+  "last_seen_listing_path": "/items/6135493",
+  "updated_at": "2026-05-16T11:16:16.242411+00:00",
   "paused": false,
   "update_offset": 681925284,
   "recent_listings": [
-    {
-      "listing_id": "6126354",
-      "listing_path": "/items/6126354",
-      "updated_at": "2026-05-13T14:41:18+04:00"
-    },
-    {
-      "listing_id": "6126355",
-      "listing_path": "/items/6126355",
-      "updated_at": "2026-05-13T14:41:37+04:00"
-    },
-    {
-      "listing_id": "6126359",
-      "listing_path": "/items/6126359",
-      "updated_at": "2026-05-13T14:41:59+04:00"
-    },
-    {
-      "listing_id": "6126360",
-      "listing_path": "/items/6126360",
-      "updated_at": "2026-05-13T14:42:17+04:00"
-    },
     {
       "listing_id": "6126361",
       "listing_path": "/items/6126361",
@@ -504,22 +484,44 @@
       "listing_id": "6135175",
       "listing_path": "/items/6135175",
       "updated_at": "2026-05-16T14:07:11+04:00"
+    },
+    {
+      "listing_id": "6135487",
+      "listing_path": "/items/6135487",
+      "updated_at": "2026-05-16T15:14:16+04:00"
+    },
+    {
+      "listing_id": "6129780",
+      "listing_path": "/items/6129780",
+      "updated_at": "2026-05-16T15:14:20+04:00"
+    },
+    {
+      "listing_id": "6135484",
+      "listing_path": "/items/6135484",
+      "updated_at": "2026-05-16T15:14:25+04:00"
+    },
+    {
+      "listing_id": "6135493",
+      "listing_path": "/items/6135493",
+      "updated_at": "2026-05-16T15:14:44+04:00"
     }
   ],
   "deleted_notified_ids": [
-    "6116260",
+    "6127969",
     "6125051",
     "6126353",
-    "6116707",
-    "6116682",
-    "6116691",
     "6116865",
     "6124418",
-    "6098311",
     "6121856",
+    "6098311",
     "6125052",
-    "6118727",
-    "6115899"
+    "6116691",
+    "6116682",
+    "6116260",
+    "6127975",
+    "6116707",
+    "6115899",
+    "6118727"
   ],
-  "last_update_check_at": "2026-05-16T10:07:57.432500+00:00"
+  "last_update_check_at": "2026-05-16T11:15:55.370759+00:00"
 }
