@@ -1,40 +1,10 @@
 {
-  "last_seen_listing_id": "6276535",
-  "last_seen_listing_path": "/items/6276535",
-  "updated_at": "2026-07-08T19:52:02.307673+00:00",
+  "last_seen_listing_id": "6276583",
+  "last_seen_listing_path": "/items/6276583",
+  "updated_at": "2026-07-08T20:50:44.806679+00:00",
   "paused": false,
   "update_offset": 681925286,
   "recent_listings": [
-    {
-      "listing_id": "6268626",
-      "listing_path": "/items/6268626",
-      "updated_at": "2026-07-06T12:48:18+04:00"
-    },
-    {
-      "listing_id": "6268630",
-      "listing_path": "/items/6268630",
-      "updated_at": "2026-07-06T12:48:28+04:00"
-    },
-    {
-      "listing_id": "6255334",
-      "listing_path": "/items/6255334",
-      "updated_at": "2026-07-06T12:49:49+04:00"
-    },
-    {
-      "listing_id": "6268632",
-      "listing_path": "/items/6268632",
-      "updated_at": "2026-07-06T12:49:48+04:00"
-    },
-    {
-      "listing_id": "6269606",
-      "listing_path": "/items/6269606",
-      "updated_at": "2026-07-06T16:29:11+04:00"
-    },
-    {
-      "listing_id": "6269607",
-      "listing_path": "/items/6269607",
-      "updated_at": "2026-07-06T16:29:25+04:00"
-    },
     {
       "listing_id": "6269605",
       "listing_path": "/items/6269605",
@@ -504,6 +474,36 @@
       "listing_id": "6276535",
       "listing_path": "/items/6276535",
       "updated_at": "2026-07-08T23:46:25+04:00"
+    },
+    {
+      "listing_id": "6274481",
+      "listing_path": "/items/6274481",
+      "updated_at": "2026-07-09T00:29:02+04:00"
+    },
+    {
+      "listing_id": "6276572",
+      "listing_path": "/items/6276572",
+      "updated_at": "2026-07-09T00:32:38+04:00"
+    },
+    {
+      "listing_id": "6266639",
+      "listing_path": "/items/6266639",
+      "updated_at": "2026-07-09T00:37:07+04:00"
+    },
+    {
+      "listing_id": "6276580",
+      "listing_path": "/items/6276580",
+      "updated_at": "2026-07-09T00:41:19+04:00"
+    },
+    {
+      "listing_id": "6276582",
+      "listing_path": "/items/6276582",
+      "updated_at": "2026-07-09T00:44:41+04:00"
+    },
+    {
+      "listing_id": "6276583",
+      "listing_path": "/items/6276583",
+      "updated_at": "2026-07-09T00:47:34+04:00"
     }
   ],
   "deleted_notified_ids": [
