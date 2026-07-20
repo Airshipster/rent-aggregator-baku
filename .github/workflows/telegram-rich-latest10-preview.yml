@@ -1,0 +1,229 @@
+name: telegram-rich-latest10-preview
+
+on:
+  workflow_dispatch:
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    env:
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_OWNER_CHAT_ID: ${{ secrets.TELEGRAM_OWNER_CHAT_ID }}
+      SOURCE_START_URL: ${{ secrets.SOURCE_START_URL }}
+      SOURCE_GRAPHQL_PATH: ${{ secrets.SOURCE_GRAPHQL_PATH }}
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install requests==2.32.3
+      - name: Send latest 10 rich previews
+        run: |
+          python - <<'PY'
+          import html
+          import os
+          import time
+          from urllib.parse import urlparse
+
+          import requests
+
+          token = os.environ["TELEGRAM_BOT_TOKEN"]
+          chat_id = os.environ["TELEGRAM_OWNER_CHAT_ID"]
+          start_url = (os.environ.get("SOURCE_START_URL") or "https://bina.az/items").strip()
+          parsed = urlparse(start_url)
+          base_url = f"{parsed.scheme}://{parsed.netloc}" if parsed.scheme and parsed.netloc else "https://bina.az"
+          graphql_path = (os.environ.get("SOURCE_GRAPHQL_PATH") or "/graphql").strip() or "/graphql"
+          graphql_url = base_url.rstrip("/") + "/" + graphql_path.lstrip("/")
+          session = requests.Session()
+          session.headers.update({
+              "User-Agent": "personal-rent-monitor/1.0",
+              "Accept": "application/json,text/html;q=0.8,*/*;q=0.5",
+          })
+
+          search_query = """
+          query SearchItems($first:Int,$filter:ItemFilter,$sort:ItemConnectionSort!,$cursor:String){
+            itemsConnection(first:$first,after:$cursor,filter:$filter,sort:$sort){
+              edges{node{id path updatedAt}}
+            }
+          }
+          """
+          detail_query = """
+          query ItemDetail($id:ID!){
+            item(id:$id){
+              id
+              path
+              address
+              description
+              rooms
+              floor
+              floors
+              hasRepair
+              longitude
+              latitude
+              location{fullName path}
+              nearestLocations{... on Location{id fullName path} ... on City{id name path}}
+              area{value units}
+              price{total currency perAre}
+              company{id name targetType}
+              business{... on Agency{id name path itemsCount viewsCount contactAddress latitude longitude city{name}} ... on Residence{id companyName path address lat lng city{name}}}
+              category{id name pluralName slug title}
+              photos{full f660x496 thumbnail}
+            }
+          }
+          """
+
+          def gql(query, variables):
+              response = session.post(
+                  graphql_url,
+                  json={"query": query, "variables": variables},
+                  headers={"Content-Type": "application/json"},
+                  timeout=30,
+              )
+              response.raise_for_status()
+              payload = response.json()
+              if payload.get("errors"):
+                  raise RuntimeError(payload["errors"])
+              return payload["data"]
+
+          def esc(value):
+              return html.escape(str(value or ""), quote=True)
+
+          summaries = gql(
+              search_query,
+              {"first": 10, "filter": {"leased": True, "cityId": 1}, "sort": "BUMPED_AT_DESC", "cursor": None},
+          )["itemsConnection"]["edges"]
+          listing_ids = [str((edge.get("node") or {}).get("id") or "") for edge in summaries]
+          listing_ids = [listing_id for listing_id in listing_ids if listing_id]
+          if not listing_ids:
+              raise RuntimeError("No recent listing ids found")
+
+          def landlord_hashtag(item):
+              company = item.get("company") or {}
+              if item.get("business") or company.get("targetType") == "AGENCY":
+                  return "#agentlik"
+              return "#mülkiyyətçi"
+
+          def send_item(item):
+              photos = [
+                  p.get("full") or p.get("f660x496") or p.get("thumbnail")
+                  for p in item.get("photos") or []
+              ]
+              photos = [p for p in photos if p]
+              media = [
+                  {"id": f"p{index + 1}", "media": {"type": "photo", "media": url}}
+                  for index, url in enumerate(photos)
+              ]
+
+              category = item.get("category") or {}
+              location = item.get("location") or {}
+              area = item.get("area") or {}
+              price = item.get("price") or {}
+              landmarks = []
+              if location.get("fullName"):
+                  landmarks.append(location["fullName"].strip())
+              for node in item.get("nearestLocations") or []:
+                  value = node.get("fullName") or node.get("name")
+                  if value and value.strip() not in landmarks:
+                      landmarks.append(value.strip())
+
+              rooms = item.get("rooms")
+              title = " · ".join(
+                  part
+                  for part in [
+                      f"{rooms} otaqlı" if rooms else "",
+                      category.get("name") or "Mənzil",
+                      location.get("fullName") or "",
+                  ]
+                  if part
+              )
+              params = " · ".join(
+                  part
+                  for part in [
+                      f"{rooms} otaq" if rooms else "",
+                      f"{area.get('value'):g} m²" if area.get("value") is not None else "",
+                      f"{item.get('floor') or '?'}/{item.get('floors') or '?'}" if item.get("floor") or item.get("floors") else "",
+                      "təmirli" if item.get("hasRepair") is True else "təmirsiz" if item.get("hasRepair") is False else "",
+                  ]
+                  if part
+              )
+              price_text = f"{price.get('total')} {price.get('currency') or 'AZN'} / ay" if price.get("total") is not None else "Qiymət göstərilməyib"
+              listing_url = base_url.rstrip("/") + (item.get("path") or f"/items/{item['id']}")
+              lat = item.get("latitude")
+              lon = item.get("longitude")
+              maps_url = f"https://www.google.com/maps?q={lat},{lon}" if lat and lon else ""
+              address = item.get("address") or "Ünvan dəqiqləşdirilir"
+              info = esc((item.get("description") or "Məlumat əlavə edilməyib").strip())
+              if len(info) > 1000:
+                  info = info[:997] + "..."
+
+              rows = [
+                  ("Qiymət", esc(price_text)),
+                  ("Ünvan", esc(address)),
+                  ("Yaxınlıqda", esc(" · ".join(landmarks[:4]) or "Yaxın obyektlər qeyd olunmayıb")),
+                  ("Parametrlər", esc(params or "Ətraflı məlumat elanda")),
+                  ("Kirayə verən", esc(landlord_hashtag(item))),
+                  ("Məlumat", info),
+              ]
+              table_body = "\n".join(
+                  f'<tr><th align="right">{label}</th><th align="left">{value}</th></tr>'
+                  for label, value in rows
+              )
+              count = len(media)
+              first_count = (count + 1) // 2
+              first_collage = "\n".join(f'<img src="tg://photo?id=p{i}"/>' for i in range(1, first_count + 1))
+              second_collage = "\n".join(f'<img src="tg://photo?id=p{i}"/>' for i in range(first_count + 1, count + 1))
+              photo_blocks = ""
+              if first_collage:
+                  photo_blocks += f"<tg-collage>{first_collage}</tg-collage>"
+              if second_collage:
+                  photo_blocks += f"\n<tg-collage>{second_collage}</tg-collage>"
+              map_block = (
+                  f"""
+                  <details>
+                    <summary>Xəritə</summary>
+                    <p><a href="{esc(maps_url)}">Google Xəritə</a></p>
+                    <figure><tg-map lat="{lat}" long="{lon}" zoom="15"/><figcaption>{esc(address)}</figcaption></figure>
+                  </details>
+                  """
+                  if maps_url
+                  else ""
+              )
+              rich_html = f"""
+              <h3>{esc(title)}</h3>
+              <table bordered>{table_body}</table>
+              <p>Foto: {count} / {len(photos)}</p>
+              {photo_blocks}
+              {map_block}
+              """
+              result = requests.post(
+                  f"https://api.telegram.org/bot{token}/sendRichMessage",
+                  json={
+                      "chat_id": chat_id,
+                      "rich_message": {"html": rich_html, "media": media},
+                      "disable_notification": True,
+                      "reply_markup": {
+                          "inline_keyboard": [[{"text": "Ətraflı bax", "url": listing_url}]]
+                      },
+                  },
+                  timeout=120,
+              )
+              print(item["id"], len(photos), result.status_code)
+              print(result.text[:1000])
+              result.raise_for_status()
+              data = result.json()
+              if not data.get("ok"):
+                  raise RuntimeError(data)
+              return data["result"]["message_id"], len(photos), count
+
+          sent = []
+          for listing_id in listing_ids:
+              item = gql(detail_query, {"id": listing_id}).get("item")
+              if not item:
+                  print(f"skip missing item {listing_id}")
+                  continue
+              sent.append((listing_id, *send_item(item)))
+              time.sleep(1)
+
+          print("sent latest rich previews:")
+          for listing_id, message_id, photos_total, media_count in sent:
+              print(f"{listing_id}: message_id={message_id} photos={media_count}/{photos_total}")
+          PY
