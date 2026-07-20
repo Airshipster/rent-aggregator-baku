@@ -118,7 +118,7 @@ jobs:
           maps_url = f"https://www.google.com/maps?q={lat},{lon}" if lat and lon else ""
           landlord = "#agentlik" if item.get("business") or ((item.get("company") or {}).get("targetType") == "AGENCY") else "#mülkiyyətçi"
           address = item.get("address") or "Ünvan dəqiqləşdirilir"
-          info = esc((item.get("description") or "Məlumat əlavə edilməyib").strip())
+          info = (item.get("description") or "Məlumat əlavə edilməyib").strip()
           if len(info) > 1000:
               info = info[:997] + "..."
 
