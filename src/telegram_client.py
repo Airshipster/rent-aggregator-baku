@@ -1,6 +1,7 @@
 import json
 import os
 import tempfile
+import time
 from pathlib import Path
 from typing import Any
 
@@ -26,6 +27,16 @@ class TelegramClient:
             timeout=self.timeout,
         )
         data = response.json()
+        if response.status_code == 429 and data.get("parameters", {}).get("retry_after"):
+            time.sleep(int(data["parameters"]["retry_after"]) + 2)
+            response = self.session.post(
+                f"{self.base_url}/{method}",
+                data=payload if files else None,
+                json=payload if not files else None,
+                files=files,
+                timeout=self.timeout,
+            )
+            data = response.json()
         if not data.get("ok"):
             raise RuntimeError(f"telegram {method} failed: {data.get('description')}")
         return data["result"]
@@ -51,6 +62,26 @@ class TelegramClient:
         if link_preview_url:
             payload["link_preview_options"] = {"url": link_preview_url, "prefer_large_media": True}
         return self.call("sendMessage", payload)
+
+    def send_rich_message(
+        self,
+        chat_id: str,
+        html: str,
+        media: list[dict[str, Any]],
+        button_text: str,
+        button_url: str,
+        protect_content: bool = False,
+    ) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            "chat_id": chat_id,
+            "rich_message": {"html": html},
+            "reply_markup": {"inline_keyboard": [[{"text": button_text, "url": button_url}]]},
+        }
+        if media:
+            payload["rich_message"]["media"] = media
+        if protect_content:
+            payload["protect_content"] = True
+        return self.call("sendRichMessage", payload)
 
     def send_long_message(self, chat_id: str, text: str, protect_content: bool = False) -> list[dict[str, Any]]:
         chunks = []

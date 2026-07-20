@@ -1,7 +1,7 @@
 import os
 from datetime import timedelta
 
-from .formatter_private_ru import format_private
+from .formatter_private_rich import format_private_rich
 from .formatter_public_az import format_deleted_update, format_public
 from .models import ListingDetail, ListingSummary, RunStats
 from .source_client import SourceBlockedError, SourceClient
@@ -127,11 +127,16 @@ def deliver_listing(telegram: TelegramClient | None, item: ListingDetail, dry_ru
             if item.listing_id in recipient_seen or (not global_new and chat_id not in backfill_ids):
                 continue
             try:
-                telegram.send_message(chat_id, "______Следующее_объявление______", protect_content=telegram.protect)
-                telegram.send_long_message(chat_id, format_private(item), protect_content=telegram.protect)
-                if item.latitude and item.longitude:
-                    telegram.send_location(chat_id, item.latitude, item.longitude, protect_content=telegram.protect)
-                telegram.send_photos(chat_id, item.image_urls, item.listing_id, env_int("MAX_IMAGES_PRIVATE", 50))
+                image_urls = item.image_urls[: env_int("MAX_IMAGES_PRIVATE", 50)]
+                rich_html, rich_media = format_private_rich(item, image_urls)
+                telegram.send_rich_message(
+                    chat_id,
+                    rich_html,
+                    rich_media,
+                    button_text="Ətraflı bax",
+                    button_url=item.listing_url,
+                    protect_content=telegram.protect,
+                )
                 recipient_seen.append(item.listing_id)
                 seen_by_recipient[chat_id] = recipient_seen[-100:]
                 stats.private_sent += 1
