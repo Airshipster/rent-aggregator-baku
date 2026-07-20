@@ -23,7 +23,6 @@ jobs:
       - name: Send table style previews
         run: |
           python - <<'PY'
-          import html
           import os
           import time
 
@@ -69,9 +68,6 @@ jobs:
           item = payload["data"]["item"]
           if not item:
               raise RuntimeError(f"Listing {listing_id} not found")
-
-          def esc(value):
-              return html.escape(str(value or ""), quote=True)
 
           photos = [
               p.get("full") or p.get("f660x496") or p.get("thumbnail")
@@ -127,71 +123,110 @@ jobs:
               info = info[:997] + "..."
 
           rows = [
-              ("Qiymət", esc(price_text)),
-              ("Ünvan", esc(address)),
-              ("Yaxınlıqda", esc(" · ".join(landmarks[:4]) or "Yaxın obyektlər qeyd olunmayıb")),
-              ("Parametrlər", esc(params or "Ətraflı məlumat elanda")),
-              ("Kirayə verən", esc(landlord)),
+              ("Qiymət", price_text),
+              ("Ünvan", address),
+              ("Yaxınlıqda", " · ".join(landmarks[:4]) or "Yaxın obyektlər qeyd olunmayıb"),
+              ("Parametrlər", params or "Ətraflı məlumat elanda"),
+              ("Kirayə verən", landlord),
               ("Məlumat", info),
           ]
 
           count = len(media)
           first_count = (count + 1) // 2
-          first_collage = "\n".join(f'<img src="tg://photo?id=p{i}"/>' for i in range(1, first_count + 1))
-          second_collage = "\n".join(f'<img src="tg://photo?id=p{i}"/>' for i in range(first_count + 1, count + 1))
-          second_block = f"<tg-collage>{second_collage}</tg-collage>" if second_collage else ""
 
-          map_block = (
-              f"""
-              <details>
-                <summary>Xəritə</summary>
-                <p><a href="{esc(maps_url)}">Google Xəritə</a></p>
-                <figure><tg-map lat="{lat}" long="{lon}" zoom="15"/><figcaption>{esc(address)}</figcaption></figure>
-              </details>
-              """
-              if maps_url
-              else ""
-          )
+          def photo_block(index):
+              return {"type": "photo", "photo": {"type": "photo", "media": photos[index]}}
 
-          def table_html(attrs):
-              body = "\n".join(
-                  f'<tr><th align="right">{label}</th><td>{value}</td></tr>'
-                  for label, value in rows
-              )
-              return f"<table {attrs}>{body}</table>"
+          def collage_blocks():
+              blocks = []
+              if count:
+                  blocks.append({
+                      "type": "collage",
+                      "blocks": [photo_block(i) for i in range(0, first_count)],
+                  })
+              if count > first_count:
+                  blocks.append({
+                      "type": "collage",
+                      "blocks": [photo_block(i) for i in range(first_count, count)],
+                  })
+              return blocks
 
-          def horizontal_html():
+          def table_block(is_bordered=False, is_striped=False):
+              block = {
+                  "type": "table",
+                  "cells": [
+                      [
+                          {"text": label, "is_header": True, "align": "right", "valign": "middle"},
+                          {"text": value, "align": "left", "valign": "middle"},
+                      ]
+                      for label, value in rows
+                  ],
+              }
+              if is_bordered:
+                  block["is_bordered"] = True
+              if is_striped:
+                  block["is_striped"] = True
+              return block
+
+          def horizontal_blocks():
               blocks = []
               for index, (label, value) in enumerate(rows):
-                  blocks.append(f'<table><tr><th align="right">{label}</th><td>{value}</td></tr></table>')
+                  blocks.append({
+                      "type": "table",
+                      "cells": [[
+                          {"text": label, "is_header": True, "align": "right", "valign": "middle"},
+                          {"text": value, "align": "left", "valign": "middle"},
+                      ]],
+                  })
                   if index != len(rows) - 1:
-                      blocks.append("<hr/>")
-              return "\n".join(blocks)
+                      blocks.append({"type": "divider"})
+              return blocks
+
+          def map_details_block():
+              if not maps_url:
+                  return None
+              return {
+                  "type": "details",
+                  "summary": "Xəritə",
+                  "blocks": [
+                      {"type": "paragraph", "text": {"type": "url", "text": "Google Xəritə", "url": maps_url}},
+                      {
+                          "type": "map",
+                          "location": {"latitude": lat, "longitude": lon},
+                          "zoom": 15,
+                          "width": 600,
+                          "height": 300,
+                          "caption": {"text": address},
+                      },
+                  ],
+              }
 
           variants = [
-              ("Variant C: bordered", table_html("bordered")),
-              ("Variant D: striped", table_html("striped")),
-              ("Variant E: bordered + striped", table_html("bordered striped")),
-              ("Variant F: horizontal imitasiya", horizontal_html()),
+              ("Variant C2: bordered official", [table_block(is_bordered=True)]),
+              ("Variant D2: striped official", [table_block(is_striped=True)]),
+              ("Variant E2: bordered + striped official", [table_block(is_bordered=True, is_striped=True)]),
+              ("Variant F2: horizontal imitasiya", horizontal_blocks()),
           ]
 
-          def rich_html(label, table_block):
-              return f"""
-              <h3>{esc(label)}</h3>
-              <h3>{esc(title)}</h3>
-              {table_block}
-              <p>Foto: {count} / {len(photos)}</p>
-              <tg-collage>{first_collage}</tg-collage>
-              {second_block}
-              {map_block}
-              """
+          def rich_blocks(label, table_blocks):
+              blocks = [
+                  {"type": "heading", "text": label, "size": 3},
+                  {"type": "heading", "text": title, "size": 3},
+                  *table_blocks,
+                  {"type": "paragraph", "text": f"Foto: {count} / {len(photos)}"},
+                  *collage_blocks(),
+              ]
+              details = map_details_block()
+              if details:
+                  blocks.append(details)
+              return blocks
 
-          for label, table_block in variants:
+          for label, table_blocks in variants:
               result = requests.post(
                   f"https://api.telegram.org/bot{token}/sendRichMessage",
                   json={
                       "chat_id": chat_id,
-                      "rich_message": {"html": rich_html(label, table_block), "media": media},
+                      "rich_message": {"blocks": rich_blocks(label, table_blocks)},
                       "disable_notification": True,
                       "reply_markup": {
                           "inline_keyboard": [[{"text": "Ətraflı bax", "url": listing_url}]]
