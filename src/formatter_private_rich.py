@@ -4,9 +4,9 @@ from .models import ListingDetail
 
 
 LABELS = {
-    "ru": {"price":"Цена", "address":"Адрес", "near":"Рядом", "specs":"Параметры", "seller":"Разместил", "info":"Информация", "photos":"Фото", "map":"Карта", "maps":"Google Карты", "unknown_address":"Адрес не указан", "unknown_near":"Ориентиры не указаны", "unknown_price":"Цена не указана", "details":"Подробнее в объявлении", "no_info":"Информация не добавлена", "room":"комн.", "renovated":"с ремонтом", "not_renovated":"без ремонта", "month":"мес.", "day":"день"},
-    "az": {"price":"Qiymət", "address":"Ünvan", "near":"Yaxınlıqda", "specs":"Parametrlər", "seller":"Kirayə verən", "info":"Məlumat", "photos":"Foto", "map":"Xəritə", "maps":"Google Xəritə", "unknown_address":"Ünvan dəqiqləşdirilir", "unknown_near":"Yaxın obyektlər qeyd olunmayıb", "unknown_price":"Qiymət göstərilməyib", "details":"Ətraflı məlumat elanda", "no_info":"Məlumat əlavə edilməyib", "room":"otaq", "renovated":"təmirli", "not_renovated":"təmirsiz", "month":"ay", "day":"gün"},
-    "en": {"price":"Price", "address":"Address", "near":"Nearby", "specs":"Details", "seller":"Posted by", "info":"Information", "photos":"Photos", "map":"Map", "maps":"Google Maps", "unknown_address":"Address not specified", "unknown_near":"Nearby places not specified", "unknown_price":"Price not specified", "details":"See listing for details", "no_info":"No information provided", "room":"rooms", "renovated":"renovated", "not_renovated":"not renovated", "month":"month", "day":"day"},
+    "ru": {"price":"Цена", "address":"Адрес", "near":"Рядом", "specs":"Параметры", "seller":"Разместил", "info":"Информация", "photos":"Фото", "map":"Карта", "maps":"Google Карты", "unknown_address":"Адрес не указан", "unknown_near":"Ориентиры не указаны", "unknown_price":"Цена не указана", "details":"Подробнее в объявлении", "no_info":"Информация не добавлена", "room":"комн.", "renovated":"с ремонтом", "not_renovated":"без ремонта", "month":"мес.", "day":"день", "new":"Новостройка", "old":"Вторичка", "apartment":"квартира", "house":"дом / дача", "office":"офис", "garage":"гараж", "land":"земельный участок", "commercial":"коммерческий объект", "floor_word":"эт."},
+    "az": {"price":"Qiymət", "address":"Ünvan", "near":"Yaxınlıqda", "specs":"Parametrlər", "seller":"Elanı yerləşdirən", "info":"Məlumat", "photos":"Foto", "map":"Xəritə", "maps":"Google Xəritə", "unknown_address":"Ünvan dəqiqləşdirilir", "unknown_near":"Yaxın obyektlər qeyd olunmayıb", "unknown_price":"Qiymət göstərilməyib", "details":"Ətraflı məlumat elanda", "no_info":"Məlumat əlavə edilməyib", "room":"otaq", "renovated":"təmirli", "not_renovated":"təmirsiz", "month":"ay", "day":"gün", "new":"Yeni tikili", "old":"Köhnə tikili", "apartment":"mənzil", "house":"həyət evi / bağ evi", "office":"ofis", "garage":"qaraj", "land":"torpaq sahəsi", "commercial":"obyekt", "floor_word":"mərtəbə"},
+    "en": {"price":"Price", "address":"Address", "near":"Nearby", "specs":"Details", "seller":"Posted by", "info":"Information", "photos":"Photos", "map":"Map", "maps":"Google Maps", "unknown_address":"Address not specified", "unknown_near":"Nearby places not specified", "unknown_price":"Price not specified", "details":"See listing for details", "no_info":"No information provided", "room":"rooms", "renovated":"renovated", "not_renovated":"not renovated", "month":"month", "day":"day", "new":"New building", "old":"Resale", "apartment":"apartment", "house":"house / cottage", "office":"office", "garage":"garage", "land":"land plot", "commercial":"commercial property", "floor_word":"floors"},
 }
 
 
@@ -30,11 +30,30 @@ def format_private_rich(item: ListingDetail, image_urls: list[str], language: st
 
 
 def title(item: ListingDetail, language: str = "az") -> str:
+    slug = item.category_slug or ""
     parts = []
-    if item.rooms:
-        room_word = {"ru":"комн.", "az":"otaqlı", "en":"room" if item.rooms == 1 else "rooms"}.get(language, "комн.")
-        parts.append(f"{item.rooms} {room_word}")
-    parts.append(item.building_type or "Mənzil")
+    if slug.startswith("menziller/"):
+        if item.rooms:
+            room = {"ru":f"{item.rooms}-комнатная", "az":f"{item.rooms} otaqlı", "en":f"{item.rooms}-room"}.get(language, f"{item.rooms}-room")
+            parts.append(f"{room} {label(language, 'apartment')}")
+        else:
+            parts.append(label(language, "apartment"))
+        parts.append(label(language, "new" if slug.endswith("yeni-tikili") else "old"))
+    elif slug == "heyet-evleri":
+        if item.rooms:
+            prefix={"ru":f"{item.rooms}-комнатный ","az":f"{item.rooms} otaqlı ","en":f"{item.rooms}-room "}.get(language,f"{item.rooms}-room ")
+        else:
+            prefix=""
+        parts.append(prefix + label(language, "house"))
+        if item.total_floors:
+            parts.append(f"{item.total_floors} {label(language, 'floor_word')}")
+    else:
+        kind = {"ofisler":"office", "qarajlar":"garage", "torpaq":"land", "obyektler":"commercial"}.get(slug, "commercial")
+        area = item.land_area_m2 if slug == "torpaq" else item.area_m2
+        if area is not None:
+            unit = "sot" if slug == "torpaq" else "m²"
+            parts.append(f"{area:g} {unit}")
+        parts.append(label(language, kind))
     if item.metro or item.district:
         parts.append(item.metro or item.district or "")
     return " · ".join(part for part in parts if part)

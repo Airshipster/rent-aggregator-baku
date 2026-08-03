@@ -45,7 +45,9 @@ def process_channel_one() -> bool:
                 msg=telegram("sendMessage",{"chat_id":task["chat_id"],"text":format_public(item),"parse_mode":"HTML","link_preview_options":{"url":item.listing_url,"prefer_large_media":True}})
                 cur.execute("UPDATE channel_posts SET status='sent',telegram_message_id=%s,sent_at=now(),updated_at=now() WHERE id=%s",(msg["message_id"],task["channel_post_id"]))
             else:
-                telegram("sendMessage",{"chat_id":task["chat_id"],"text":format_deleted_update(item.listing_url,item.listing_id),"parse_mode":"HTML"})
+                text="❌ <b>Elan silinib</b>\n\n"+format_public(item)
+                telegram("editMessageText",{"chat_id":task["chat_id"],"message_id":task["telegram_message_id"],"text":text,"parse_mode":"HTML","link_preview_options":{"url":item.listing_url,"prefer_large_media":True}})
+                cur.execute("UPDATE channel_posts SET status='removed',updated_at=now() WHERE id=%s",(task["channel_post_id"],))
             cur.execute("UPDATE channel_outbox_tasks SET status='sent',sent_at=now(),last_error=NULL WHERE id=%s",(task["id"],))
         except Exception as exc:
             attempts=task["attempts"]+1

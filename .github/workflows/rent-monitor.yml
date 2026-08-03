@@ -41,6 +41,7 @@ jobs:
       LIST_PAGES_PER_RUN: ${{ vars.LIST_PAGES_PER_RUN || '1' }}
       MAX_DETAIL_FETCHES_PER_RUN: ${{ vars.MAX_DETAIL_FETCHES_PER_RUN || '10' }}
       COLLECTOR_CITY_BATCH_SIZE: ${{ vars.COLLECTOR_CITY_BATCH_SIZE || '5' }}
+      REMOVAL_CHECKS_PER_RUN: ${{ vars.REMOVAL_CHECKS_PER_RUN || '10' }}
       MAX_IMAGES_PRIVATE: ${{ vars.MAX_IMAGES_PRIVATE || '50' }}
       DRY_RUN: ${{ vars.DRY_RUN || 'false' }}
       USE_PLAYWRIGHT: "false"

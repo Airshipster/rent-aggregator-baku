@@ -35,9 +35,10 @@ def fmt_price(item: ListingDetail) -> str:
 
 
 def fmt_title(item: ListingDetail) -> str:
-    rooms = f"{item.rooms} otaqlı" if item.rooms else "Mənzil"
+    rooms = f"{item.rooms} otaqlı " if item.rooms else ""
     seller = {"owner": "mülkiyyətçi", "agency": "agentlik", "unknown": "naməlum"}.get(item.seller_type, "naməlum")
-    return f"{rooms} mənzil · #{seller}"
+    category = "Yeni tikili" if item.category_slug == "menziller/yeni-tikili" else "Köhnə tikili"
+    return f"{rooms}mənzil · {category} · #{seller}"
 
 
 def fmt_specs(item: ListingDetail) -> str:

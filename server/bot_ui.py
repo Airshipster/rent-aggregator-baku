@@ -9,10 +9,10 @@ import requests
 from .db import connect
 from .i18n import t
 from .matching import matches
-from .locations import CITIES, CITY_BY_ID
+from .locations import CITIES, CITY_BY_ID, city_label
 
 
-LANGUAGE_BUTTONS = [[("Русский", "ru"), ("Azərbaycanca", "az"), ("English", "en")]]
+LANGUAGE_BUTTONS = [[("🇷🇺 Русский", "ru"), ("🇦🇿 Azərbaycanca", "az"), ("🇬🇧 English", "en")]]
 CATEGORIES = {
     "new": ("Новостройка", "menziller/yeni-tikili"),
     "old": ("Вторичка", "menziller/kohne-tikili"),
@@ -38,6 +38,10 @@ DISTRICTS = {
     "surakhani": ("Suraxanı", "Suraxanı r."),
     "yasamal": ("Yasamal", "Yasamal r."),
 }
+DISTRICT_LABELS = {
+    "ru":{"absheron":"Абшеронский","binagadi":"Бинагадинский","khatai":"Хатаинский","khazar":"Хазарский","garadagh":"Гарадагский","narimanov":"Наримановский","nasimi":"Насиминский","nizami":"Низаминский","pirallahi":"Пираллахинский","sabunchu":"Сабунчинский","sabail":"Сабаильский","surakhani":"Сураханский","yasamal":"Ясамальский"},
+    "en":{"absheron":"Absheron","binagadi":"Binagadi","khatai":"Khatai","khazar":"Khazar","garadagh":"Garadagh","narimanov":"Narimanov","nasimi":"Nasimi","nizami":"Nizami","pirallahi":"Pirallahi","sabunchu":"Sabunchu","sabail":"Sabail","surakhani":"Surakhani","yasamal":"Yasamal"},
+}
 
 UI={
 "ru":{"menu":"Меню","choose":"Выберите действие","configure":"Настроить фильтр","filters":"Мои фильтры","additional":"Дополнительные условия","settings":"Настройки","language":"Язык","payment":"Оплата","requests":"Заявки на доступ","access":"Управление доступом","back":"Назад","cancel":"Отмена","deal":"Что вас интересует?","rent":"Аренда","sale":"Покупка","period":"На какой срок нужна аренда?","monthly":"Помесячно","daily":"Посуточно","category":"Тип объекта","new":"Новостройка","old":"Вторичка","house":"Дом/вилла","office":"Офис","land":"Земля","commercial":"Коммерция","garage":"Гараж","pmin":"Цена от, AZN","pmax":"Цена до, AZN","no_min":"Без минимума","no_max":"Без максимума","rooms":"Количество комнат","any":"Любое","amin":"Площадь от, м²","amax":"Площадь до, м²","district":"Район","all_baku":"Весь Баку","saved":"Фильтр сохранён","found":"Найдено объявлений за сегодня: {count}.","none_today":"Подходящих объявлений за сегодня пока нет.","main":"Главное меню","no_filters":"Фильтров пока нет.","choose_filter":"Выберите фильтр","payment_off":"Оплата пока недоступна. Доступ выдаётся вручную.","no_requests":"Новых заявок нет.","open":"Открыть меню"},
@@ -56,13 +60,13 @@ UI["ru"].update({
     "district_nasimi":"Насиминский", "district_nizami":"Низаминский", "district_narimanov":"Наримановский",
     "district_yasamal":"Ясамальский", "district_sabail":"Сабаильский", "district_khatai":"Хатаинский",
     "district_binagadi":"Бинагадинский", "district_surakhani":"Сураханский", "district_sabunchu":"Сабунчинский",
-    "access_add":"Добавить пользователя", "access_block":"Заблокировать", "access_rules":"Список правил",
+    "access_add":"Добавить пользователя", "access_block":"Заблокировать", "access_rules":"Реестр доступа",
     "choose_identifier_add":"Выберите идентификатор для добавления", "choose_identifier_block":"Выберите идентификатор для блокировки", "phone":"Телефон",
     "access_updated":"Доступ обновлён", "access_added":"добавлен", "access_blocked":"заблокирован",
     "rule_later":"Правило применится, когда пользователь идентифицируется в боте.", "recognize_failed":"Не удалось распознать значение", "try_again":"Попробуйте ещё раз.",
     "request_title":"Новая заявка на доступ", "name":"Имя", "not_set":"Не указано", "approve":"Одобрить", "reject":"Отклонить",
     "send_identifier":"Отправьте ID, username или телефон одним сообщением.", "send_block_identifier":"Отправьте значение, которое нужно заблокировать.",
-    "rules_title":"Правила доступа", "rules_empty":"Правил пока нет.", "allowed":"разрешён", "blocked":"заблокирован",
+    "rules_title":"Реестр доступа", "rules_help":"Здесь хранятся разрешения и блокировки по Telegram ID, username и телефону.", "rules_empty":"Записей пока нет.", "allowed":"разрешён", "blocked":"заблокирован",
     "filter_ready":"Фильтр настроен", "activate":"Сохранить и включить",
     "city":"Город по умолчанию", "city_prompt":"Выберите город для новых фильтров", "city_saved":"Город по умолчанию: {city}",
     "land_min":"Участок от, соток", "land_max":"Участок до, соток",
@@ -70,6 +74,9 @@ UI["ru"].update({
     "choose_one_or_both":"Выберите один или оба варианта.", "optional_field":"Это поле необязательно на Bina.az. Автор мог его не заполнить.",
     "grant_access":"Дать доступ", "revoke_access":"Отозвать доступ", "confirm_access":"Подтвердите действие", "current_access":"Текущий доступ", "active":"активен", "inactive":"не выдан",
     "identifier_type_prompt":"Это Telegram ID или номер телефона?", "as_telegram_id":"Telegram ID", "as_phone":"Номер телефона",
+    "seller":"Владелец / агентство", "documents":"Документы", "documents_question":"Документы и ипотека", "bill":"Есть купчая", "mortgage":"Подходит для ипотеки",
+    "floor_min":"Этаж от", "floor_max":"Этаж до", "total_floors_min":"Этажей в здании от", "total_floors_max":"Этажей в здании до",
+    "office_type":"Где находится офис?", "business_center":"Бизнес-центр", "home_apartment":"Дом / квартира", "villa":"Вилла",
 })
 UI["az"].update({
     "area_any":"Fərqi yoxdur", "done":"Hazırdır", "seller":"Elanı kim yerləşdirib", "repair":"Təmir",
@@ -83,13 +90,13 @@ UI["az"].update({
     "district_nasimi":"Nəsimi", "district_nizami":"Nizami", "district_narimanov":"Nərimanov",
     "district_yasamal":"Yasamal", "district_sabail":"Səbail", "district_khatai":"Xətai",
     "district_binagadi":"Binəqədi", "district_surakhani":"Suraxanı", "district_sabunchu":"Sabunçu",
-    "access_add":"İstifadəçi əlavə et", "access_block":"Blokla", "access_rules":"Qaydaların siyahısı",
+    "access_add":"İstifadəçi əlavə et", "access_block":"Blokla", "access_rules":"Giriş reyestri",
     "choose_identifier_add":"Əlavə etmək üçün identifikatoru seçin", "choose_identifier_block":"Bloklamaq üçün identifikatoru seçin", "phone":"Telefon",
     "access_updated":"Giriş yeniləndi", "access_added":"əlavə edildi", "access_blocked":"bloklandı",
     "rule_later":"Qayda istifadəçi botda identifikasiya olunduqda tətbiq ediləcək.", "recognize_failed":"Dəyəri tanımaq mümkün olmadı", "try_again":"Yenidən cəhd edin.",
     "request_title":"Yeni giriş müraciəti", "name":"Ad", "not_set":"Göstərilməyib", "approve":"Təsdiqlə", "reject":"Rədd et",
     "send_identifier":"ID, username və ya telefonu bir mesajla göndərin.", "send_block_identifier":"Bloklanacaq dəyəri göndərin.",
-    "rules_title":"Giriş qaydaları", "rules_empty":"Hələ qayda yoxdur.", "allowed":"icazə verilib", "blocked":"bloklanıb",
+    "rules_title":"Giriş reyestri", "rules_help":"Telegram ID, username və telefon üzrə icazə və bloklamalar burada saxlanılır.", "rules_empty":"Hələ qeyd yoxdur.", "allowed":"icazə verilib", "blocked":"bloklanıb",
     "filter_ready":"Filtr tənzimləndi", "activate":"Yadda saxla və aktiv et",
     "city":"Standart şəhər", "city_prompt":"Yeni filtrlər üçün şəhəri seçin", "city_saved":"Standart şəhər: {city}",
     "land_min":"Torpaq sahəsi, minimum sot", "land_max":"Torpaq sahəsi, maksimum sot",
@@ -97,6 +104,9 @@ UI["az"].update({
     "choose_one_or_both":"Bir və ya hər iki variantı seçin.", "optional_field":"Bu sahə Bina.az-da məcburi deyil. Müəllif onu doldurmaya bilər.",
     "grant_access":"Giriş ver", "revoke_access":"Girişi ləğv et", "confirm_access":"Əməliyyatı təsdiqləyin", "current_access":"Cari giriş", "active":"aktivdir", "inactive":"verilməyib",
     "identifier_type_prompt":"Bu Telegram ID-dir, yoxsa telefon nömrəsi?", "as_telegram_id":"Telegram ID", "as_phone":"Telefon nömrəsi",
+    "seller":"Mülkiyyətçi / agentlik", "documents":"Sənədlər", "documents_question":"Sənədlər və ipoteka", "bill":"Çıxarış var", "mortgage":"İpotekaya yararlıdır",
+    "floor_min":"Minimum mərtəbə", "floor_max":"Maksimum mərtəbə", "total_floors_min":"Binada minimum mərtəbə", "total_floors_max":"Binada maksimum mərtəbə",
+    "office_type":"Ofis harada yerləşir?", "business_center":"Biznes mərkəzi", "home_apartment":"Ev / mənzil", "villa":"Villa",
 })
 UI["en"].update({
     "area_any":"Any", "done":"Done", "seller":"Posted by", "repair":"Renovation",
@@ -110,13 +120,13 @@ UI["en"].update({
     "district_nasimi":"Nasimi", "district_nizami":"Nizami", "district_narimanov":"Narimanov",
     "district_yasamal":"Yasamal", "district_sabail":"Sabail", "district_khatai":"Khatai",
     "district_binagadi":"Binagadi", "district_surakhani":"Surakhani", "district_sabunchu":"Sabunchu",
-    "access_add":"Add user", "access_block":"Block", "access_rules":"Rules list",
+    "access_add":"Add user", "access_block":"Block", "access_rules":"Access registry",
     "choose_identifier_add":"Choose an identifier to add", "choose_identifier_block":"Choose an identifier to block", "phone":"Phone",
     "access_updated":"Access updated", "access_added":"added", "access_blocked":"blocked",
     "rule_later":"The rule will apply when the user identifies themselves in the bot.", "recognize_failed":"Could not recognize the value", "try_again":"Try again.",
     "request_title":"New access request", "name":"Name", "not_set":"Not specified", "approve":"Approve", "reject":"Reject",
     "send_identifier":"Send the ID, username, or phone number in one message.", "send_block_identifier":"Send the value to block.",
-    "rules_title":"Access rules", "rules_empty":"No rules yet.", "allowed":"allowed", "blocked":"blocked",
+    "rules_title":"Access registry", "rules_help":"Permissions and blocks by Telegram ID, username, and phone are stored here.", "rules_empty":"No entries yet.", "allowed":"allowed", "blocked":"blocked",
     "filter_ready":"Filter configured", "activate":"Save and enable",
     "city":"Default city", "city_prompt":"Choose a city for new filters", "city_saved":"Default city: {city}",
     "land_min":"Land area from, sot", "land_max":"Land area to, sot",
@@ -124,6 +134,9 @@ UI["en"].update({
     "choose_one_or_both":"Select one or both options.", "optional_field":"This field is optional on Bina.az. The author may leave it empty.",
     "grant_access":"Grant access", "revoke_access":"Revoke access", "confirm_access":"Confirm the action", "current_access":"Current access", "active":"active", "inactive":"not granted",
     "identifier_type_prompt":"Is this a Telegram ID or a phone number?", "as_telegram_id":"Telegram ID", "as_phone":"Phone number",
+    "seller":"Owner / agency", "documents":"Documents", "documents_question":"Documents and mortgage", "bill":"Title deed available", "mortgage":"Mortgage eligible",
+    "floor_min":"Floor from", "floor_max":"Floor to", "total_floors_min":"Building floors from", "total_floors_max":"Building floors to",
+    "office_type":"Where is the office located?", "business_center":"Business center", "home_apartment":"House / apartment", "villa":"Villa",
 })
 
 
@@ -286,7 +299,44 @@ def _tg(method: str, payload: dict[str, Any]) -> Any:
 
 
 def _keyboard(rows: list[list[tuple[str, str]]]) -> dict[str, Any]:
-    return {"inline_keyboard": [[{"text": label, "callback_data": data} for label, data in row] for row in rows]}
+    return {"inline_keyboard": [[{"text": _button_text(label, data), "callback_data": data} for label, data in row] for row in rows]}
+
+
+def _button_text(label: str, data: str) -> str:
+    if label.startswith(("✅", "❌", "🇷", "🇦", "🇬", "📍")) or label in {"‹", "›"}:
+        return label
+    if label in {"Назад", "Geri", "Back"}:
+        return f"↩️ {label}"
+    if label in {"Отмена", "Ləğv et", "Cancel"}:
+        return f"❌ {label}"
+    if data.startswith("city:set:"):
+        return label
+    if data.startswith(("av:", "dv:")):
+        return label
+    exact = {
+        "main":"🏠", "settings":"⚙️", "settings:language":"🌐", "settings:payment":"💳",
+        "settings:applications":"📨", "settings:access":"🔐", "access:add":"➕", "access:block":"🚫",
+        "access:list":"📋", "filter:new":"🎯", "filter:list":"📂", "additional:list":"🎛️",
+        "launcher:open":"📋", "apply":"📨",
+    }
+    prefix = next((icon for key, icon in exact.items() if data == key), None)
+    if prefix:
+        return f"{prefix} {label}"
+    patterns = [
+        ("filter:activate:","✅"), ("filter:cancel:","❌"), ("additional:","🎛️"),
+        ("ad:","🔎"), ("approve:","✅"), ("reject:","❌"),
+        ("access:confirm:approved","✅"), ("access:confirm:blocked","🚫"),
+        ("access:approved:","➕"), ("access:blocked:","🚫"), ("settings:city:","🏙️"),
+    ]
+    prefix = next((icon for key, icon in patterns if data.startswith(key)), None)
+    if data.startswith("wf:"):
+        value = data.rsplit(":", 1)[-1]
+        prefix = {"rent":"🔑","sale":"🏷️","monthly":"📅","daily":"☀️","new":"🏢","old":"🏙️","house":"🏡","office":"💼","garage":"🚗","land":"🌳","commercial":"🏬","any":"♾️"}.get(value,"🔹")
+    if data.startswith("lang:"):
+        return label
+    if data.endswith((":back", ":cancel")) or data in {"settings:access", "settings", "main"} and "back" in label.lower():
+        prefix = "↩️"
+    return f"{prefix or '•'} {label}"
 
 
 def _screen(cur, user_id: int, chat_id: int, text: str, rows: list[list[tuple[str, str]]], kind: str = "menu") -> None:
@@ -356,11 +406,25 @@ def _main(cur, uid: int, chat_id: int, language: str) -> None:
     _screen(cur, uid, chat_id, _l(language,"choose"), rows)
 
 
+def _first_filter_or_main(cur, uid: int, chat_id: int, language: str) -> None:
+    cur.execute("SELECT filter_onboarding_completed,default_city_name FROM users WHERE telegram_user_id=%s",(uid,)); account=cur.fetchone() or {}
+    if account.get("filter_onboarding_completed"):
+        _main(cur,uid,chat_id,language); return
+    cur.execute("SELECT id FROM filters WHERE telegram_user_id=%s AND deleted_at IS NULL AND is_enabled=false ORDER BY created_at DESC LIMIT 1",(uid,)); draft=cur.fetchone()
+    if draft:
+        filter_id=str(draft["id"])
+    else:
+        city=account.get("default_city_name") or "Bakı"
+        cur.execute("INSERT INTO filters(telegram_user_id,name,is_enabled,basic) VALUES(%s,%s,false,%s::jsonb) RETURNING id",(uid,_l(language,"new_filter"),json.dumps({"city":[city]})))
+        filter_id=str(cur.fetchone()["id"])
+    _wizard(cur,uid,chat_id,filter_id,"deal")
+
+
 def _settings(cur, uid: int, chat_id: int, admin: bool) -> None:
     language=_user_language(cur,uid)
-    cur.execute("SELECT default_city_name FROM users WHERE telegram_user_id=%s", (uid,))
-    city = (cur.fetchone() or {}).get("default_city_name") or "Bakı"
-    rows = [[(_l(language,"language"), "settings:language")], [(f"{_l(language,'city')}: {city}", "settings:city:0")], [(_l(language,"payment"), "settings:payment")]]
+    cur.execute("SELECT default_city_id,default_city_name FROM users WHERE telegram_user_id=%s", (uid,))
+    city_row = cur.fetchone() or {}; city_id=city_row.get("default_city_id") or 1
+    rows = [[(_l(language,"language"), "settings:language")], [(f"{_l(language,'city')}: {city_label(city_id,language)}", "settings:city:0")], [(_l(language,"payment"), "settings:payment")]]
     if admin:
         rows.append([(_l(language,"requests"), "settings:applications")])
         rows.append([(_l(language,"access"), "settings:access")])
@@ -370,17 +434,8 @@ def _settings(cur, uid: int, chat_id: int, admin: bool) -> None:
 
 def _city_screen(cur, uid: int, chat_id: int, page: int) -> None:
     language = _user_language(cur, uid)
-    page_size = 10
-    page = max(0, min(page, (len(CITIES) - 1) // page_size))
-    choices = CITIES[page * page_size:(page + 1) * page_size]
-    rows = [[(name, f"city:set:{city_id}:{page}")] for city_id, name in choices]
-    nav = []
-    if page:
-        nav.append(("‹", f"settings:city:{page - 1}"))
-    if (page + 1) * page_size < len(CITIES):
-        nav.append(("›", f"settings:city:{page + 1}"))
-    if nav:
-        rows.append(nav)
+    choices = [(f"{index}. {city_label(city_id,language)}", f"city:set:{city_id}:0") for index, (city_id, _name) in enumerate(CITIES, 1)]
+    rows = [choices[index:index + 3] for index in range(0, len(choices), 3)]
     rows.append([(_l(language, "back"), "settings")])
     _screen(cur, uid, chat_id, f"<b>{_l(language, 'city_prompt')}</b>", rows)
 
@@ -450,11 +505,16 @@ def _wizard(cur, uid: int, chat_id: int, filter_id: str, step: str, context: dic
         rows = [[(_l(language, key), f"wf:{filter_id}:category:{key}")] for key in keys]
         rows.append(back)
         _screen(cur, uid, chat_id, f"<b>{_l(language, 'category')}</b>", rows)
+    elif step == "office_type":
+        values=[(_l(language,"business_center"),"business"),(_l(language,"home_apartment"),"home"),(_l(language,"villa"),"villa")]
+        _screen(cur,uid,chat_id,f"<b>{_l(language,'office_type')}</b>",[[ (a,f"wf:{filter_id}:office_type:{b}") ] for a,b in values]+[back])
     elif step == "price_min":
-        values = [(_l(language, "no_min"), "any"), ("300", "300"), ("500", "500"), ("800", "800"), ("1000", "1000"), ("1500", "1500")]
+        cur.execute("SELECT basic FROM filters WHERE id=%s",(filter_id,)); basic=cur.fetchone()["basic"]
+        values = [(_l(language,"no_min"),"any")]+([("50 000","50000"),("100 000","100000"),("150 000","150000"),("250 000","250000"),("500 000","500000")] if basic.get("deal_type")==["sale"] else [("30","30"),("50","50"),("80","80"),("100","100"),("150","150")] if basic.get("rent_period")==["daily"] else [("300","300"),("500","500"),("800","800"),("1000","1000"),("1500","1500")])
         _screen(cur, uid, chat_id, f"<b>{_l(language, 'pmin')}</b>", [[(a, f"wf:{filter_id}:pmin:{b}") for a,b in values[:3]], [(a, f"wf:{filter_id}:pmin:{b}") for a,b in values[3:]], back])
     elif step == "price_max":
-        values = [(_l(language, "no_max"), "any"), ("500", "500"), ("800", "800"), ("1000", "1000"), ("1500", "1500"), ("2500", "2500"), ("5000", "5000")]
+        cur.execute("SELECT basic FROM filters WHERE id=%s",(filter_id,)); basic=cur.fetchone()["basic"]
+        values = [(_l(language,"no_max"),"any")]+([("100 000","100000"),("150 000","150000"),("250 000","250000"),("500 000","500000"),("1 000 000","1000000")] if basic.get("deal_type")==["sale"] else [("50","50"),("80","80"),("100","100"),("150","150"),("250","250"),("500","500")] if basic.get("rent_period")==["daily"] else [("500","500"),("800","800"),("1000","1000"),("1500","1500"),("2500","2500"),("5000","5000")])
         _screen(cur, uid, chat_id, f"<b>{_l(language, 'pmax')}</b>", [[(a, f"wf:{filter_id}:pmax:{b}") for a,b in values[:4]], [(a, f"wf:{filter_id}:pmax:{b}") for a,b in values[4:]], back])
     elif step == "rooms":
         values = [(_l(language, "any"), "any"), ("1", "1"), ("2", "2"), ("3", "3"), ("4+", "4")]
@@ -462,19 +522,28 @@ def _wizard(cur, uid: int, chat_id: int, filter_id: str, step: str, context: dic
     elif step == "area_min":
         cur.execute("SELECT basic FROM filters WHERE id=%s", (filter_id,)); basic = cur.fetchone()["basic"]
         land = basic.get("category_key") == "land"
-        values = [(_l(language, "area_any"), "any"), ("30", "30"), ("50", "50"), ("70", "70"), ("100", "100"), ("200", "200")]
+        values = [(_l(language,"area_any"),"any")]+([("1","1"),("3","3"),("5","5"),("10","10"),("20","20"),("50","50")] if land else [("30","30"),("50","50"),("70","70"),("100","100"),("200","200")])
         _screen(cur, uid, chat_id, f"<b>{_l(language, 'land_min' if land else 'amin')}</b>", [[(a, f"wf:{filter_id}:amin:{b}") for a,b in values[:3]], [(a, f"wf:{filter_id}:amin:{b}") for a,b in values[3:]], back])
     elif step == "area_max":
         cur.execute("SELECT basic FROM filters WHERE id=%s", (filter_id,)); basic = cur.fetchone()["basic"]
         land = basic.get("category_key") == "land"
-        values = [(_l(language, "area_any"), "any"), ("50", "50"), ("70", "70"), ("100", "100"), ("150", "150"), ("300", "300"), ("500", "500")]
+        values = [(_l(language,"area_any"),"any")]+([("3","3"),("5","5"),("10","10"),("20","20"),("50","50"),("100","100")] if land else [("50","50"),("70","70"),("100","100"),("150","150"),("300","300"),("500","500")])
         _screen(cur, uid, chat_id, f"<b>{_l(language, 'land_max' if land else 'amax')}</b>", [[(a, f"wf:{filter_id}:amax:{b}") for a,b in values[:4]], [(a, f"wf:{filter_id}:amax:{b}") for a,b in values[4:]], back])
+    elif step in {"floor_min", "floor_max", "total_floors_min", "total_floors_max"}:
+        values=[(_l(language,"any"),"any"),("1","1"),("2","2"),("3","3"),("5","5"),("10","10"),("15","15"),("20","20"),("30","30")]
+        rows=[[(a,f"wf:{filter_id}:{step}:{b}") for a,b in values[:5]],[(a,f"wf:{filter_id}:{step}:{b}") for a,b in values[5:]],back]
+        _screen(cur,uid,chat_id,f"<b>{_l(language,step)}</b>",rows)
     elif step == "district":
-        rows = [[(_l(language, "all_baku") if key == "any" else label, f"wf:{filter_id}:district:{key}")] for key, (label, _value) in DISTRICTS.items()]
+        rows = [[(_l(language, "all_baku") if key == "any" else DISTRICT_LABELS.get(language,{}).get(key,label), f"wf:{filter_id}:district:{key}")] for key, (label, _value) in DISTRICTS.items()]
         rows.append(back)
         _screen(cur, uid, chat_id, f"<b>{_l(language, 'district')}</b>", rows)
     elif step == "done":
-        _screen(cur, uid, chat_id, f"<b>{_l(language, 'filter_ready')}</b>", [[(_l(language, "additional"), f"additional:{filter_id}")], [(_l(language, "activate"), f"filter:activate:{filter_id}")]])
+        cur.execute("SELECT basic FROM filters WHERE id=%s", (filter_id,)); basic = cur.fetchone()["basic"]
+        rows = [[(_l(language, "seller"), f"ad:{filter_id}:seller")], [(_l(language, "repair"), f"ad:{filter_id}:repair")]]
+        if basic.get("deal_type") == ["sale"]:
+            rows.append([(_l(language, "documents"), f"ad:{filter_id}:documents")])
+        rows.extend([[(_l(language, "activate"), f"filter:activate:{filter_id}")], [(_l(language, "cancel"), f"filter:cancel:{filter_id}")]])
+        _screen(cur, uid, chat_id, f"<b>{_l(language, 'filter_ready')}</b>\n\n{_l(language, 'additional_warning')}", rows)
 
 
 def _wizard_callback(cur, uid: int, chat_id: int, data: str) -> None:
@@ -484,7 +553,10 @@ def _wizard_callback(cur, uid: int, chat_id: int, data: str) -> None:
     elif step == "period":
         _set_basic(cur, filter_id, uid, "rent_period", [value]); _wizard(cur, uid, chat_id, filter_id, "category")
     elif step == "category":
-        _set_basic(cur, filter_id, uid, "category_slug", [CATEGORIES[value][1]]); _set_basic(cur, filter_id, uid, "category_key", value); _wizard(cur, uid, chat_id, filter_id, "price_min")
+        _set_basic(cur, filter_id, uid, "category_slug", [CATEGORIES[value][1]]); _set_basic(cur, filter_id, uid, "category_key", value); _wizard(cur, uid, chat_id, filter_id, "office_type" if value=="office" else "price_min")
+    elif step == "office_type":
+        source={"business":"Biznes mərkəzi","home":"Ev / Mənzil","villa":"Villa"}[value]
+        _set_basic(cur,filter_id,uid,"building_type",[source]); _wizard(cur,uid,chat_id,filter_id,"price_min")
     elif step == "pmin":
         _set_basic(cur, filter_id, uid, "price_min", None if value == "any" else int(value)); _wizard(cur, uid, chat_id, filter_id, "price_max")
     elif step == "pmax":
@@ -502,7 +574,15 @@ def _wizard_callback(cur, uid: int, chat_id: int, data: str) -> None:
         key="land_area_m2_max" if basic.get("category_key")=="land" else "area_m2_max"
         _set_basic(cur, filter_id, uid, key, None if value == "any" else int(value))
         cur.execute("SELECT basic FROM filters WHERE id=%s",(filter_id,)); basic=cur.fetchone()["basic"]
-        _wizard(cur, uid, chat_id, filter_id, "district" if basic.get("city")==["Bakı"] else "done")
+        next_step="floor_min" if basic.get("category_key") in ("new","old") else "district" if basic.get("city")==["Bakı"] else "done"
+        _wizard(cur, uid, chat_id, filter_id, next_step)
+    elif step in {"floor_min","floor_max","total_floors_min","total_floors_max"}:
+        _set_basic(cur,filter_id,uid,step,None if value=="any" else int(value))
+        order={"floor_min":"floor_max","floor_max":"total_floors_min","total_floors_min":"total_floors_max"}
+        if step in order: _wizard(cur,uid,chat_id,filter_id,order[step])
+        else:
+            cur.execute("SELECT basic FROM filters WHERE id=%s",(filter_id,)); basic=cur.fetchone()["basic"]
+            _wizard(cur,uid,chat_id,filter_id,"district" if basic.get("city")==["Bakı"] else "done")
     elif step == "district":
         _set_basic(cur, filter_id, uid, "district", None if value == "any" else [DISTRICTS[value][1]]); _wizard(cur, uid, chat_id, filter_id, "done")
 
@@ -510,7 +590,12 @@ def _wizard_callback(cur, uid: int, chat_id: int, data: str) -> None:
 def _additional(cur, uid: int, chat_id: int, filter_id: str) -> None:
     language = _user_language(cur, uid)
     text = f"<b>{_l(language, 'additional')}</b>\n\n{_l(language, 'additional_warning')}"
-    rows = [[(_l(language, "seller"), f"ad:{filter_id}:seller")], [(_l(language, "repair"), f"ad:{filter_id}:repair")], [(_l(language, "activate"), f"filter:activate:{filter_id}")]]
+    cur.execute("SELECT basic FROM filters WHERE id=%s AND telegram_user_id=%s", (filter_id, uid)); row=cur.fetchone()
+    basic=(row or {}).get("basic") or {}
+    rows = [[(_l(language, "seller"), f"ad:{filter_id}:seller")], [(_l(language, "repair"), f"ad:{filter_id}:repair")]]
+    if basic.get("deal_type") == ["sale"]:
+        rows.append([(_l(language, "documents"), f"ad:{filter_id}:documents")])
+    rows.extend([[(_l(language, "activate"), f"filter:activate:{filter_id}")], [(_l(language, "back"), "filter:list")]])
     _screen(cur, uid, chat_id, text, rows)
 
 
@@ -574,14 +659,33 @@ def _repair_screen(cur, uid: int, chat_id: int, filter_id: str) -> None:
     language = _user_language(cur, uid)
     all_values = {"var", "yoxdur", "unknown"}
     selected = _selected_additional(cur, filter_id, uid, "repair_status", all_values)
-    rows = [
-        [(_choice_label(language, "all_options", selected == all_values), f"av:{filter_id}:repair:all")],
-        [(_choice_label(language, "renovated", "var" in selected), f"av:{filter_id}:repair:var")],
-        [(_choice_label(language, "not_renovated", "yoxdur" in selected), f"av:{filter_id}:repair:yoxdur")],
-        [(_choice_label(language, "unknown", "unknown" in selected), f"av:{filter_id}:repair:unknown")],
-        [(_l(language, "back"), f"additional:{filter_id}")],
-    ]
+    all_selected = selected == all_values
+    state = lambda key, value: _l(language, key) if all_selected else _choice_label(language, key, value in selected)
+    rows = [[(_choice_label(language, "all_options", True) if all_selected else _l(language, "all_options"), f"av:{filter_id}:repair:all")],
+        [(state("renovated", "var"), f"av:{filter_id}:repair:var")],
+        [(state("not_renovated", "yoxdur"), f"av:{filter_id}:repair:yoxdur")],
+        [(state("unknown", "unknown"), f"av:{filter_id}:repair:unknown")], [(_l(language, "back"), f"additional:{filter_id}")]]
     _screen(cur, uid, chat_id, f"<b>{_l(language, 'repair_question')}</b>\n\n{_l(language, 'optional_field')}", rows)
+
+
+def _documents_screen(cur, uid: int, chat_id: int, filter_id: str) -> None:
+    language = _user_language(cur, uid)
+    cur.execute("SELECT additional FROM filters WHERE id=%s AND telegram_user_id=%s", (filter_id, uid)); row=cur.fetchone()
+    additional=(row or {}).get("additional") or {}
+    bill=bool(additional.get("has_bill_of_sale")); mortgage=bool(additional.get("has_mortgage")); all_selected=not bill and not mortgage
+    rows = [[(_choice_label(language,"all_options",True) if all_selected else _l(language,"all_options"),f"dv:{filter_id}:all")],
+        [((_l(language,"bill") if all_selected else _choice_label(language,"bill",bill)),f"dv:{filter_id}:bill")],
+        [((_l(language,"mortgage") if all_selected else _choice_label(language,"mortgage",mortgage)),f"dv:{filter_id}:mortgage")],
+        [(_l(language,"back"),f"additional:{filter_id}")]]
+    _screen(cur,uid,chat_id,f"<b>{_l(language,'documents_question')}</b>\n\n{_l(language,'optional_field')}",rows)
+
+
+def _toggle_document(cur, uid: int, filter_id: str, value: str) -> None:
+    if value == "all":
+        _set_additional(cur,filter_id,uid,"has_bill_of_sale",None); _set_additional(cur,filter_id,uid,"has_mortgage",None); return
+    field="has_bill_of_sale" if value=="bill" else "has_mortgage"
+    cur.execute("SELECT additional FROM filters WHERE id=%s AND telegram_user_id=%s",(filter_id,uid)); additional=(cur.fetchone() or {}).get("additional") or {}
+    _set_additional(cur,filter_id,uid,field,None if additional.get(field) else [True],include_unknown=False)
 
 
 def handle_update(update: dict[str, Any]) -> dict[str, bool]:
@@ -655,19 +759,19 @@ def handle_update(update: dict[str, Any]) -> dict[str, bool]:
             cur.execute("SELECT state,language,language_selected FROM users WHERE telegram_user_id=%s",(uid,)); profile=cur.fetchone()
             _ensure_launcher(cur,uid,chat_id); _reset_active(cur,uid,chat_id)
             if not profile["language_selected"]: _language_screen(cur,uid,chat_id)
-            elif profile["state"]=="approved": _main(cur,uid,chat_id,profile["language"])
+            elif profile["state"]=="approved": _first_filter_or_main(cur,uid,chat_id,profile["language"])
             else: _screen(cur,uid,chat_id,t(profile["language"],"closed"),[[(t(profile["language"],"apply"),"apply")]])
             return {"ok": True}
         if data=="launcher:open":
             _reset_active(cur,uid,chat_id)
             if not profile["language_selected"]: _language_screen(cur,uid,chat_id)
-            elif profile["state"]=="approved": _main(cur,uid,chat_id,profile["language"])
+            elif profile["state"]=="approved": _first_filter_or_main(cur,uid,chat_id,profile["language"])
             else: _screen(cur,uid,chat_id,t(profile["language"],"closed"),[[(t(profile["language"],"apply"),"apply")]])
             return {"ok":True}
         if data.startswith("lang:"):
             language=data.split(":",1)[1]; cur.execute("UPDATE users SET language=%s,language_selected=true WHERE telegram_user_id=%s",(language,uid))
             _ensure_launcher(cur,uid,chat_id)
-            if profile["state"]=="approved": _main(cur,uid,chat_id,language)
+            if profile["state"]=="approved": _first_filter_or_main(cur,uid,chat_id,language)
             else: _screen(cur,uid,chat_id,t(language,"closed"),[[(t(language,"apply"),"apply")]])
         elif data=="apply":
             cur.execute("INSERT INTO user_access_audit(telegram_user_id,action) VALUES(%s,'application')",(uid,))
@@ -682,6 +786,9 @@ def handle_update(update: dict[str, Any]) -> dict[str, bool]:
             action,target=data.split(":",1); state="approved" if action=="approve" else "rejected"
             cur.execute("UPDATE users SET state=%s WHERE telegram_user_id=%s",(state,int(target)))
             cur.execute("INSERT INTO user_access_audit(telegram_user_id,action,actor_telegram_user_id) VALUES(%s,%s,%s)",(int(target),state,uid))
+            if state=="approved":
+                cur.execute("SELECT chat_id,language,language_selected FROM users WHERE telegram_user_id=%s",(int(target),)); approved=cur.fetchone()
+                if approved and approved["language_selected"]: _first_filter_or_main(cur,int(target),approved["chat_id"],approved["language"])
             _settings(cur,uid,chat_id,True)
         elif profile["state"]!="approved":
             _screen(cur,uid,chat_id,t(profile["language"],"closed"),[[(t(profile["language"],"apply"),"apply")]])
@@ -693,7 +800,7 @@ def handle_update(update: dict[str, Any]) -> dict[str, bool]:
         elif data.startswith("city:set:"):
             _,_,city_id,_page=data.split(":",3); city_id=int(city_id); city_name=CITY_BY_ID[city_id]
             cur.execute("UPDATE users SET default_city_id=%s,default_city_name=%s WHERE telegram_user_id=%s",(city_id,city_name,uid))
-            _screen(cur,uid,chat_id,_l(profile["language"],"city_saved",city=city_name),[[(_l(profile["language"],"back"),"settings")]])
+            _screen(cur,uid,chat_id,_l(profile["language"],"city_saved",city=city_label(city_id,profile["language"])),[[(_l(profile["language"],"back"),"settings")]])
         elif data=="settings:payment":
             language=profile["language"]
             _screen(cur,uid,chat_id,f"<b>{_l(language, 'payment')}</b>\n{_l(language, 'payment_off')}",[[(_l(language, 'back'),'settings')]])
@@ -735,7 +842,7 @@ def handle_update(update: dict[str, Any]) -> dict[str, bool]:
         elif data=="access:list" and uid==admin_id:
             cur.execute("SELECT identifier_type,display_value,decision,linked_telegram_user_id FROM access_identifiers ORDER BY updated_at DESC LIMIT 30"); rules=cur.fetchall()
             language=profile["language"]
-            body=f"<b>{_l(language,'rules_title')}</b>\n\n"+"\n".join(f"{x['display_value']} — {_l(language,'allowed' if x['decision']=='approved' else 'blocked')}"+(f" · <code>{x['linked_telegram_user_id']}</code>" if x['linked_telegram_user_id'] else "") for x in rules) if rules else _l(language,"rules_empty")
+            body=f"<b>{_l(language,'rules_title')}</b>\n{_l(language,'rules_help')}\n\n"+("\n".join(f"{x['display_value']} — {_l(language,'allowed' if x['decision']=='approved' else 'blocked')}"+(f" · <code>{x['linked_telegram_user_id']}</code>" if x['linked_telegram_user_id'] else "") for x in rules) if rules else _l(language,"rules_empty"))
             _screen(cur,uid,chat_id,body,[[(_l(language,'back'),'settings:access')]])
         elif data=="filter:new":
             cur.execute("SELECT default_city_name FROM users WHERE telegram_user_id=%s",(uid,)); city=(cur.fetchone() or {}).get("default_city_name") or "Bakı"
@@ -748,6 +855,7 @@ def handle_update(update: dict[str, Any]) -> dict[str, bool]:
             filter_id=data.rsplit(":",1)[1]
             cur.execute("UPDATE filters SET is_enabled=true,updated_at=now() WHERE id=%s AND telegram_user_id=%s AND deleted_at IS NULL RETURNING id",(filter_id,uid))
             queued=_enqueue_today(cur,uid,filter_id) if cur.fetchone() else 0
+            cur.execute("UPDATE users SET filter_onboarding_completed=true WHERE telegram_user_id=%s",(uid,))
             language=profile["language"]
             note=_l(language,"found",count=queued) if queued else _l(language,"none_today")
             _screen(cur,uid,chat_id,f"<b>{_l(language,'saved')}</b>\n{note}",[[(_l(language,"main"),"main")]])
@@ -764,11 +872,14 @@ def handle_update(update: dict[str, Any]) -> dict[str, bool]:
         elif data.startswith("ad:"):
             _,fid,field=data.split(":",2)
             if field=="seller": _seller_screen(cur,uid,chat_id,fid)
-            else: _repair_screen(cur,uid,chat_id,fid)
+            elif field=="repair": _repair_screen(cur,uid,chat_id,fid)
+            else: _documents_screen(cur,uid,chat_id,fid)
         elif data.startswith("av:"):
             _,fid,field,value=data.split(":",3)
             if field=='seller':
                 _toggle_additional(cur,fid,uid,'seller_type',value,{'owner','agency'}); _seller_screen(cur,uid,chat_id,fid)
             else:
                 _toggle_additional(cur,fid,uid,'repair_status',value,{'var','yoxdur','unknown'}); _repair_screen(cur,uid,chat_id,fid)
+        elif data.startswith("dv:"):
+            _,fid,value=data.split(":",2); _toggle_document(cur,uid,fid,value); _documents_screen(cur,uid,chat_id,fid)
     return {"ok": True}

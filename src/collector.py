@@ -30,15 +30,16 @@ def load_state() -> dict:
         return {
             "seen_listing_ids": [str(item) for item in value.get("seen_listing_ids", [])],
             "city_cursor": int(value.get("city_cursor") or 0),
+            "removal_cursor": int(value.get("removal_cursor") or 0),
         }
     except (FileNotFoundError, json.JSONDecodeError, AttributeError):
-        return {"seen_listing_ids": [], "city_cursor": 0}
+        return {"seen_listing_ids": [], "city_cursor": 0, "removal_cursor": 0}
 
 
-def save_state(values: list[str], city_cursor: int) -> None:
+def save_state(values: list[str], city_cursor: int, removal_cursor: int) -> None:
     STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
     STATE_PATH.write_text(
-        json.dumps({"seen_listing_ids": values[-5000:], "city_cursor": city_cursor}, ensure_ascii=False, indent=2) + "\n",
+        json.dumps({"seen_listing_ids": values[-5000:], "city_cursor": city_cursor, "removal_cursor": removal_cursor}, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
 
@@ -90,10 +91,20 @@ def main() -> None:
                 submitted_ids.append(summary.listing_id)
         except Exception as exc:
             print(f"detail_error={summary.listing_id}:{type(exc).__name__}")
-    submit(details)
+    removal_cursor=state["removal_cursor"] % max(1,len(seen_order))
+    removal_batch=(seen_order+seen_order)[removal_cursor:removal_cursor+min(env_int("REMOVAL_CHECKS_PER_RUN",10),len(seen_order))]
+    removed=[]
+    for listing_id in removal_batch:
+        try:
+            if not parser.check_exists(listing_id):
+                removed.append({"listing_id":listing_id,"listing_url":f"{parser.client.base_url}/items/{listing_id}","source":"source","is_deleted":True})
+        except Exception as exc:
+            print(f"removal_check_error={listing_id}:{type(exc).__name__}")
+    submit(details+removed)
     next_cursor = (cursor + len(city_batch)) % max(1, len(cities))
-    save_state(seen_order + submitted_ids, next_cursor)
-    print(f"collected={len(details)} city_batch={','.join(str(item[0]) for item in city_batch)} next_city_cursor={next_cursor}")
+    next_removal_cursor=(removal_cursor+len(removal_batch)) % max(1,len(seen_order+submitted_ids))
+    save_state(seen_order + submitted_ids, next_cursor, next_removal_cursor)
+    print(f"collected={len(details)} removed={len(removed)} city_batch={','.join(str(item[0]) for item in city_batch)} next_city_cursor={next_cursor}")
 
 
 if __name__ == "__main__": main()

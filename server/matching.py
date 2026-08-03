@@ -6,11 +6,11 @@ def _value(payload: dict[str, Any], field: str) -> Any:
 
 
 def _matches_basic(payload: dict[str, Any], basic: dict[str, Any]) -> bool:
-    for field in ("deal_type", "category_slug", "city", "district", "rent_period", "currency"):
+    for field in ("deal_type", "category_slug", "city", "district", "rent_period", "currency", "building_type"):
         choices = basic.get(field)
         if choices and _value(payload, field) not in choices:
             return False
-    for field in ("price", "area_m2", "land_area_m2", "rooms"):
+    for field in ("price", "area_m2", "land_area_m2", "rooms", "floor", "total_floors"):
         value = _value(payload, field)
         minimum, maximum = basic.get(f"{field}_min"), basic.get(f"{field}_max")
         if value is None and (minimum is not None or maximum is not None):

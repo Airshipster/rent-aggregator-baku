@@ -20,6 +20,16 @@ def _public_channel_enabled() -> bool:
     return os.getenv("ENABLE_PUBLIC_CHANNEL", "false").lower() in {"1", "true", "yes", "on"}
 
 
+def _public_channel_eligible(payload: dict[str, Any]) -> bool:
+    return (
+        _public_channel_enabled()
+        and payload.get("channel_candidate", True)
+        and payload.get("deal_type") == "rent"
+        and payload.get("city") == "Bakı"
+        and payload.get("category_slug") in {"menziller/yeni-tikili", "menziller/kohne-tikili"}
+    )
+
+
 def _verify_ingest(body: bytes, signature: str | None) -> None:
     expected = hmac.new(os.environ["INGEST_SHARED_SECRET"].encode(), body, hashlib.sha256).hexdigest()
     if not signature or not hmac.compare_digest(expected, signature):
@@ -93,7 +103,9 @@ async def ingest(request: Request, x_signature: str | None = Header(None), x_ide
             status = "removed" if payload.get("is_deleted") else "active"
             cur.execute("""INSERT INTO listings(source,source_listing_id,payload,status,removed_at)
               VALUES(%s,%s,%s::jsonb,%s,CASE WHEN %s='removed' THEN now() END)
-              ON CONFLICT(source,source_listing_id) DO UPDATE SET payload=EXCLUDED.payload,last_seen_at=now(),
+              ON CONFLICT(source,source_listing_id) DO UPDATE SET
+              payload=CASE WHEN EXCLUDED.status='removed' THEN listings.payload || jsonb_build_object('is_deleted',true,'raw_status','removed') ELSE EXCLUDED.payload END,
+              last_seen_at=now(),
               status=EXCLUDED.status,removed_at=CASE WHEN EXCLUDED.status='removed' THEN now() ELSE NULL END
               RETURNING id,(xmax=0) AS new_row,status""", (source,source_id,json.dumps(payload),status,status))
             row = cur.fetchone(); listing_id = row["id"]; inserted += int(row["new_row"])
@@ -101,10 +113,13 @@ async def ingest(request: Request, x_signature: str | None = Header(None), x_ide
                 cur.execute("""INSERT INTO outbox_tasks(delivery_id,task_type)
                     SELECT id,'mark_removed' FROM deliveries WHERE listing_id=%s AND telegram_message_id IS NOT NULL
                     ON CONFLICT(delivery_id,task_type) DO NOTHING""", (listing_id,))
+                cur.execute("""INSERT INTO channel_outbox_tasks(channel_post_id,task_type)
+                    SELECT id,'mark_removed' FROM channel_posts WHERE listing_id=%s AND telegram_message_id IS NOT NULL AND status='sent'
+                    ON CONFLICT(channel_post_id,task_type) DO NOTHING""", (listing_id,))
                 continue
             if not row["new_row"]:
                 continue
-            if _public_channel_enabled() and payload.get("deal_type") == "rent" and payload.get("channel_candidate", True):
+            if _public_channel_eligible(payload):
                 cur.execute("""INSERT INTO channel_posts(listing_id,chat_id) VALUES(%s,%s)
                     ON CONFLICT(listing_id) DO NOTHING RETURNING id""", (listing_id, int(os.environ["TELEGRAM_PUBLIC_CHANNEL_ID"])))
                 channel_post = cur.fetchone()
