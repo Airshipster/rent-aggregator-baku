@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import time
 from datetime import datetime, timedelta, timezone
 
@@ -13,8 +14,22 @@ from src.telegram_client import TelegramClient
 from src.utils import parse_dt
 
 
-def retry_at(attempt: int) -> datetime:
-    return datetime.now(timezone.utc) + timedelta(seconds=min(3600, 15 * (2 ** min(attempt, 8))))
+_last_channel_send = 0.0
+
+
+def retry_at(attempt: int, error: Exception | str | None = None) -> datetime:
+    match=re.search(r"retry after (\d+)",str(error or ""),re.I)
+    seconds=int(match.group(1))+1 if match else min(3600,15*(2**min(attempt,8)))
+    return datetime.now(timezone.utc)+timedelta(seconds=seconds)
+
+
+def throttle_channel() -> None:
+    global _last_channel_send
+    interval=float(os.getenv("CHANNEL_SEND_INTERVAL_SECONDS","3.2"))
+    wait=interval-(time.monotonic()-_last_channel_send)
+    if wait>0:
+        time.sleep(wait)
+    _last_channel_send=time.monotonic()
 
 
 def telegram(method: str, payload: dict):
@@ -41,6 +56,7 @@ def process_channel_one() -> bool:
         cur.execute("UPDATE channel_outbox_tasks SET status='processing',locked_at=now() WHERE id=%s",(task["id"],))
         try:
             item=listing(task["payload"])
+            throttle_channel()
             if task["task_type"]=="send":
                 msg=telegram("sendMessage",{"chat_id":task["chat_id"],"text":format_public(item),"parse_mode":"HTML","link_preview_options":{"url":item.listing_url,"prefer_large_media":True}})
                 cur.execute("UPDATE channel_posts SET status='sent',telegram_message_id=%s,sent_at=now(),updated_at=now() WHERE id=%s",(msg["message_id"],task["channel_post_id"]))
@@ -53,8 +69,9 @@ def process_channel_one() -> bool:
             attempts=task["attempts"]+1
             error=f"{type(exc).__name__}: {exc}"[:500]
             print(f"channel_delivery_error task={task['id']} attempt={attempts} error={error}", flush=True)
-            cur.execute("UPDATE channel_outbox_tasks SET status='failed',attempts=%s,next_retry_at=%s,last_error=%s WHERE id=%s",(attempts,retry_at(attempts),error,task["id"]))
-            cur.execute("UPDATE channel_posts SET status='failed',attempts=attempts+1,next_retry_at=%s,last_error=%s,updated_at=now() WHERE id=%s",(retry_at(attempts),error,task["channel_post_id"]))
+            due=retry_at(attempts,exc)
+            cur.execute("UPDATE channel_outbox_tasks SET status='failed',attempts=%s,next_retry_at=%s,last_error=%s WHERE id=%s",(attempts,due,error,task["id"]))
+            cur.execute("UPDATE channel_posts SET status='failed',attempts=attempts+1,next_retry_at=%s,last_error=%s,updated_at=now() WHERE id=%s",(due,error,task["channel_post_id"]))
         return True
 
 
@@ -89,8 +106,9 @@ def process_one() -> bool:
             attempts=task["attempts"]+1
             error=f"{type(exc).__name__}: {exc}"[:500]
             print(f"private_delivery_error task={task['id']} attempt={attempts} error={error}", flush=True)
-            cur.execute("UPDATE outbox_tasks SET status='failed',attempts=%s,next_retry_at=%s,last_error=%s WHERE id=%s",(attempts,retry_at(attempts),error,task["id"]))
-            cur.execute("UPDATE deliveries SET status='failed',attempts=attempts+1,next_retry_at=%s,last_error=%s,updated_at=now() WHERE id=%s",(retry_at(attempts),error,task["delivery_id"]))
+            due=retry_at(attempts,exc)
+            cur.execute("UPDATE outbox_tasks SET status='failed',attempts=%s,next_retry_at=%s,last_error=%s WHERE id=%s",(attempts,due,error,task["id"]))
+            cur.execute("UPDATE deliveries SET status='failed',attempts=attempts+1,next_retry_at=%s,last_error=%s,updated_at=now() WHERE id=%s",(due,error,task["delivery_id"]))
         return True
 
 
