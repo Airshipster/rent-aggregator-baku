@@ -1,6 +1,7 @@
 import json
 import os
 import re
+from html import escape
 from typing import Any
 
 import requests
@@ -8,29 +9,34 @@ import requests
 from .db import connect
 from .i18n import t
 from .matching import matches
+from .locations import CITIES, CITY_BY_ID
 
 
 LANGUAGE_BUTTONS = [[("Русский", "ru"), ("Azərbaycanca", "az"), ("English", "en")]]
 CATEGORIES = {
-    "new": ("Новостройка", "yeni-tikili"),
-    "old": ("Вторичка", "kohne-tikili"),
-    "house": ("Дом/вилла", "house"),
-    "office": ("Офис", "office"),
-    "land": ("Земля", "land"),
-    "commercial": ("Коммерция", "commercial"),
-    "garage": ("Гараж", "garage"),
+    "new": ("Новостройка", "menziller/yeni-tikili"),
+    "old": ("Вторичка", "menziller/kohne-tikili"),
+    "house": ("Дом/вилла", "heyet-evleri"),
+    "office": ("Офис", "ofisler"),
+    "garage": ("Гараж", "qarajlar"),
+    "land": ("Земля", "torpaq"),
+    "commercial": ("Коммерция", "obyektler"),
 }
 DISTRICTS = {
-    "any": ("Весь Баку", None),
-    "nasimi": ("Насиминский", "Nəsimi r."),
-    "nizami": ("Низаминский", "Nizami r."),
-    "narimanov": ("Наримановский", "Nərimanov r."),
-    "yasamal": ("Ясамальский", "Yasamal r."),
-    "sabail": ("Сабаильский", "Səbail r."),
-    "khatai": ("Хатаинский", "Xətai r."),
-    "binagadi": ("Бинагадинский", "Binəqədi r."),
-    "surakhani": ("Сураханский", "Suraxanı r."),
-    "sabunchu": ("Сабунчинский", "Sabunçu r."),
+    "any": ("Bakı", None),
+    "absheron": ("Abşeron", "Abşeron r."),
+    "binagadi": ("Binəqədi", "Binəqədi r."),
+    "khatai": ("Xətai", "Xətai r."),
+    "khazar": ("Xəzər", "Xəzər r."),
+    "garadagh": ("Qaradağ", "Qaradağ r."),
+    "narimanov": ("Nərimanov", "Nərimanov r."),
+    "nasimi": ("Nəsimi", "Nəsimi r."),
+    "nizami": ("Nizami", "Nizami r."),
+    "pirallahi": ("Pirallahı", "Pirallahı r."),
+    "sabunchu": ("Sabunçu", "Sabunçu r."),
+    "sabail": ("Səbail", "Səbail r."),
+    "surakhani": ("Suraxanı", "Suraxanı r."),
+    "yasamal": ("Yasamal", "Yasamal r."),
 }
 
 UI={
@@ -58,6 +64,12 @@ UI["ru"].update({
     "send_identifier":"Отправьте ID, username или телефон одним сообщением.", "send_block_identifier":"Отправьте значение, которое нужно заблокировать.",
     "rules_title":"Правила доступа", "rules_empty":"Правил пока нет.", "allowed":"разрешён", "blocked":"заблокирован",
     "filter_ready":"Фильтр настроен", "activate":"Сохранить и включить",
+    "city":"Город по умолчанию", "city_prompt":"Выберите город для новых фильтров", "city_saved":"Город по умолчанию: {city}",
+    "land_min":"Участок от, соток", "land_max":"Участок до, соток",
+    "all_options":"Все варианты", "owner":"Владелец", "agency":"Агентство", "renovated":"С ремонтом", "not_renovated":"Без ремонта", "unknown":"Не указано",
+    "choose_one_or_both":"Выберите один или оба варианта.", "optional_field":"Это поле необязательно на Bina.az. Автор мог его не заполнить.",
+    "grant_access":"Дать доступ", "revoke_access":"Отозвать доступ", "confirm_access":"Подтвердите действие", "current_access":"Текущий доступ", "active":"активен", "inactive":"не выдан",
+    "identifier_type_prompt":"Это Telegram ID или номер телефона?", "as_telegram_id":"Telegram ID", "as_phone":"Номер телефона",
 })
 UI["az"].update({
     "area_any":"Fərqi yoxdur", "done":"Hazırdır", "seller":"Elanı kim yerləşdirib", "repair":"Təmir",
@@ -79,6 +91,12 @@ UI["az"].update({
     "send_identifier":"ID, username və ya telefonu bir mesajla göndərin.", "send_block_identifier":"Bloklanacaq dəyəri göndərin.",
     "rules_title":"Giriş qaydaları", "rules_empty":"Hələ qayda yoxdur.", "allowed":"icazə verilib", "blocked":"bloklanıb",
     "filter_ready":"Filtr tənzimləndi", "activate":"Yadda saxla və aktiv et",
+    "city":"Standart şəhər", "city_prompt":"Yeni filtrlər üçün şəhəri seçin", "city_saved":"Standart şəhər: {city}",
+    "land_min":"Torpaq sahəsi, minimum sot", "land_max":"Torpaq sahəsi, maksimum sot",
+    "all_options":"Bütün variantlar", "owner":"Mülkiyyətçi", "agency":"Agentlik", "renovated":"Təmirli", "not_renovated":"Təmirsiz", "unknown":"Göstərilməyib",
+    "choose_one_or_both":"Bir və ya hər iki variantı seçin.", "optional_field":"Bu sahə Bina.az-da məcburi deyil. Müəllif onu doldurmaya bilər.",
+    "grant_access":"Giriş ver", "revoke_access":"Girişi ləğv et", "confirm_access":"Əməliyyatı təsdiqləyin", "current_access":"Cari giriş", "active":"aktivdir", "inactive":"verilməyib",
+    "identifier_type_prompt":"Bu Telegram ID-dir, yoxsa telefon nömrəsi?", "as_telegram_id":"Telegram ID", "as_phone":"Telefon nömrəsi",
 })
 UI["en"].update({
     "area_any":"Any", "done":"Done", "seller":"Posted by", "repair":"Renovation",
@@ -100,6 +118,12 @@ UI["en"].update({
     "send_identifier":"Send the ID, username, or phone number in one message.", "send_block_identifier":"Send the value to block.",
     "rules_title":"Access rules", "rules_empty":"No rules yet.", "allowed":"allowed", "blocked":"blocked",
     "filter_ready":"Filter configured", "activate":"Save and enable",
+    "city":"Default city", "city_prompt":"Choose a city for new filters", "city_saved":"Default city: {city}",
+    "land_min":"Land area from, sot", "land_max":"Land area to, sot",
+    "all_options":"All options", "owner":"Owner", "agency":"Agency", "renovated":"Renovated", "not_renovated":"Not renovated", "unknown":"Not specified",
+    "choose_one_or_both":"Select one or both options.", "optional_field":"This field is optional on Bina.az. The author may leave it empty.",
+    "grant_access":"Grant access", "revoke_access":"Revoke access", "confirm_access":"Confirm the action", "current_access":"Current access", "active":"active", "inactive":"not granted",
+    "identifier_type_prompt":"Is this a Telegram ID or a phone number?", "as_telegram_id":"Telegram ID", "as_phone":"Phone number",
 })
 
 
@@ -165,6 +189,85 @@ def _store_access_decision(cur, admin_id: int, kind: str, raw: str, decision: st
     if linked:
         cur.execute("INSERT INTO user_access_audit(telegram_user_id,action,actor_telegram_user_id,details) VALUES(%s,%s,%s,%s::jsonb)",(linked,"manual_"+decision,admin_id,json.dumps({"identifier_type":kind,"identifier":display})))
     return display,linked
+
+
+def _infer_identifier(raw: str) -> tuple[str, str]:
+    value = raw.strip()
+    if value.startswith("@") or re.match(r"^https?://t\.me/", value, re.I):
+        return "username", value
+    digits = "".join(re.findall(r"\d", value))
+    if value.startswith(("+", "00", "0")) or (digits.startswith("994") and len(digits) in (12, 13)):
+        return "phone", value
+    if re.fullmatch(r"\d{5,20}", value):
+        return "telegram_id", value
+    raise ValueError("Unrecognized identifier")
+
+
+def _access_confirmation(
+    cur,
+    admin_id: int,
+    chat_id: int,
+    identifiers: list[tuple[str, str]],
+    supplied: dict[str, Any] | None = None,
+) -> None:
+    supplied = supplied or {}
+    normalized: list[dict[str, str]] = []
+    linked_id = int(supplied.get("user_id") or 0) or None
+    decision = None
+    for kind, raw in identifiers:
+        value = _normalize_identifier(kind, raw)
+        display = "@" + value if kind == "username" else value
+        normalized.append({"kind": kind, "value": value, "display": display})
+        cur.execute(
+            "SELECT decision,linked_telegram_user_id FROM access_identifiers WHERE identifier_type=%s AND normalized_value=%s",
+            (kind, value),
+        )
+        rule = cur.fetchone()
+        if rule:
+            decision = rule["decision"]
+            linked_id = linked_id or rule.get("linked_telegram_user_id")
+    account = None
+    if linked_id:
+        cur.execute(
+            "SELECT telegram_user_id,first_name,last_name,username,phone_normalized,state FROM users WHERE telegram_user_id=%s",
+            (linked_id,),
+        )
+        account = cur.fetchone()
+    if not account:
+        for item in normalized:
+            if item["kind"] == "username":
+                cur.execute("SELECT telegram_user_id,first_name,last_name,username,phone_normalized,state FROM users WHERE lower(username)=%s", (item["value"],))
+            elif item["kind"] == "phone":
+                cur.execute("SELECT telegram_user_id,first_name,last_name,username,phone_normalized,state FROM users WHERE phone_normalized=%s", (item["value"],))
+            else:
+                continue
+            account = cur.fetchone()
+            if account:
+                linked_id = account["telegram_user_id"]
+                break
+    active = bool((account and account["state"] == "approved") or decision == "approved") and decision != "blocked"
+    action = "blocked" if active else "approved"
+    language = _user_language(cur, admin_id)
+    first_name = supplied.get("first_name") or (account or {}).get("first_name")
+    last_name = supplied.get("last_name") or (account or {}).get("last_name")
+    username = supplied.get("username") or (account or {}).get("username")
+    phone = supplied.get("phone_number") or (account or {}).get("phone_normalized")
+    name = " ".join(x for x in (first_name, last_name) if x) or _l(language, "not_set")
+    lines = [f"<b>{_l(language, 'confirm_access')}</b>"]
+    if linked_id:
+        lines.append(f"ID: <code>{linked_id}</code>")
+    if username:
+        lines.append(f"Username: @{escape(str(username).lstrip('@'))}")
+    lines.append(f"{_l(language, 'name')}: {escape(name)}")
+    if phone:
+        lines.append(f"{_l(language, 'phone')}: <code>{escape(str(phone))}</code>")
+    lines.append(f"{_l(language, 'current_access')}: {_l(language, 'active' if active else 'inactive')}")
+    cur.execute(
+        "UPDATE users SET wizard=%s::jsonb WHERE telegram_user_id=%s",
+        (json.dumps({"await": "access_confirmation", "decision": action, "identifiers": normalized}), admin_id),
+    )
+    button = _l(language, "revoke_access" if active else "grant_access")
+    _screen(cur, admin_id, chat_id, "\n".join(lines), [[(button, f"access:confirm:{action}")], [(_l(language, "cancel"), "settings:access")]])
 
 
 def _tg(method: str, payload: dict[str, Any]) -> Any:
@@ -255,12 +358,31 @@ def _main(cur, uid: int, chat_id: int, language: str) -> None:
 
 def _settings(cur, uid: int, chat_id: int, admin: bool) -> None:
     language=_user_language(cur,uid)
-    rows = [[(_l(language,"language"), "settings:language")], [(_l(language,"payment"), "settings:payment")]]
+    cur.execute("SELECT default_city_name FROM users WHERE telegram_user_id=%s", (uid,))
+    city = (cur.fetchone() or {}).get("default_city_name") or "Bakı"
+    rows = [[(_l(language,"language"), "settings:language")], [(f"{_l(language,'city')}: {city}", "settings:city:0")], [(_l(language,"payment"), "settings:payment")]]
     if admin:
         rows.append([(_l(language,"requests"), "settings:applications")])
         rows.append([(_l(language,"access"), "settings:access")])
     rows.append([(_l(language,"back"), "main")])
     _screen(cur, uid, chat_id, f"<b>{_l(language,'settings')}</b>", rows)
+
+
+def _city_screen(cur, uid: int, chat_id: int, page: int) -> None:
+    language = _user_language(cur, uid)
+    page_size = 10
+    page = max(0, min(page, (len(CITIES) - 1) // page_size))
+    choices = CITIES[page * page_size:(page + 1) * page_size]
+    rows = [[(name, f"city:set:{city_id}:{page}")] for city_id, name in choices]
+    nav = []
+    if page:
+        nav.append(("‹", f"settings:city:{page - 1}"))
+    if (page + 1) * page_size < len(CITIES):
+        nav.append(("›", f"settings:city:{page + 1}"))
+    if nav:
+        rows.append(nav)
+    rows.append([(_l(language, "back"), "settings")])
+    _screen(cur, uid, chat_id, f"<b>{_l(language, 'city_prompt')}</b>", rows)
 
 
 def _access_screen(cur, uid: int, chat_id: int) -> None:
@@ -338,13 +460,17 @@ def _wizard(cur, uid: int, chat_id: int, filter_id: str, step: str, context: dic
         values = [(_l(language, "any"), "any"), ("1", "1"), ("2", "2"), ("3", "3"), ("4+", "4")]
         _screen(cur, uid, chat_id, f"<b>{_l(language, 'rooms')}</b>", [[(a, f"wf:{filter_id}:rooms:{b}") for a,b in values], back])
     elif step == "area_min":
+        cur.execute("SELECT basic FROM filters WHERE id=%s", (filter_id,)); basic = cur.fetchone()["basic"]
+        land = basic.get("category_key") == "land"
         values = [(_l(language, "area_any"), "any"), ("30", "30"), ("50", "50"), ("70", "70"), ("100", "100"), ("200", "200")]
-        _screen(cur, uid, chat_id, f"<b>{_l(language, 'amin')}</b>", [[(a, f"wf:{filter_id}:amin:{b}") for a,b in values[:3]], [(a, f"wf:{filter_id}:amin:{b}") for a,b in values[3:]], back])
+        _screen(cur, uid, chat_id, f"<b>{_l(language, 'land_min' if land else 'amin')}</b>", [[(a, f"wf:{filter_id}:amin:{b}") for a,b in values[:3]], [(a, f"wf:{filter_id}:amin:{b}") for a,b in values[3:]], back])
     elif step == "area_max":
+        cur.execute("SELECT basic FROM filters WHERE id=%s", (filter_id,)); basic = cur.fetchone()["basic"]
+        land = basic.get("category_key") == "land"
         values = [(_l(language, "area_any"), "any"), ("50", "50"), ("70", "70"), ("100", "100"), ("150", "150"), ("300", "300"), ("500", "500")]
-        _screen(cur, uid, chat_id, f"<b>{_l(language, 'amax')}</b>", [[(a, f"wf:{filter_id}:amax:{b}") for a,b in values[:4]], [(a, f"wf:{filter_id}:amax:{b}") for a,b in values[4:]], back])
+        _screen(cur, uid, chat_id, f"<b>{_l(language, 'land_max' if land else 'amax')}</b>", [[(a, f"wf:{filter_id}:amax:{b}") for a,b in values[:4]], [(a, f"wf:{filter_id}:amax:{b}") for a,b in values[4:]], back])
     elif step == "district":
-        rows = [[(_l(language, "all_baku" if key == "any" else f"district_{key}"), f"wf:{filter_id}:district:{key}")] for key in DISTRICTS]
+        rows = [[(_l(language, "all_baku") if key == "any" else label, f"wf:{filter_id}:district:{key}")] for key, (label, _value) in DISTRICTS.items()]
         rows.append(back)
         _screen(cur, uid, chat_id, f"<b>{_l(language, 'district')}</b>", rows)
     elif step == "done":
@@ -358,17 +484,25 @@ def _wizard_callback(cur, uid: int, chat_id: int, data: str) -> None:
     elif step == "period":
         _set_basic(cur, filter_id, uid, "rent_period", [value]); _wizard(cur, uid, chat_id, filter_id, "category")
     elif step == "category":
-        _set_basic(cur, filter_id, uid, "category_slug", [CATEGORIES[value][1]]); _wizard(cur, uid, chat_id, filter_id, "price_min")
+        _set_basic(cur, filter_id, uid, "category_slug", [CATEGORIES[value][1]]); _set_basic(cur, filter_id, uid, "category_key", value); _wizard(cur, uid, chat_id, filter_id, "price_min")
     elif step == "pmin":
         _set_basic(cur, filter_id, uid, "price_min", None if value == "any" else int(value)); _wizard(cur, uid, chat_id, filter_id, "price_max")
     elif step == "pmax":
-        _set_basic(cur, filter_id, uid, "price_max", None if value == "any" else int(value)); _wizard(cur, uid, chat_id, filter_id, "rooms")
+        _set_basic(cur, filter_id, uid, "price_max", None if value == "any" else int(value))
+        cur.execute("SELECT basic FROM filters WHERE id=%s",(filter_id,)); basic=cur.fetchone()["basic"]
+        _wizard(cur, uid, chat_id, filter_id, "rooms" if basic.get("category_key") in ("new","old","office") else "area_min")
     elif step == "rooms":
         _set_basic(cur, filter_id, uid, "rooms_min", None if value == "any" else int(value)); _wizard(cur, uid, chat_id, filter_id, "area_min")
     elif step == "amin":
-        _set_basic(cur, filter_id, uid, "area_m2_min", None if value == "any" else int(value)); _wizard(cur, uid, chat_id, filter_id, "area_max")
+        cur.execute("SELECT basic FROM filters WHERE id=%s",(filter_id,)); basic=cur.fetchone()["basic"]
+        key="land_area_m2_min" if basic.get("category_key")=="land" else "area_m2_min"
+        _set_basic(cur, filter_id, uid, key, None if value == "any" else int(value)); _wizard(cur, uid, chat_id, filter_id, "area_max")
     elif step == "amax":
-        _set_basic(cur, filter_id, uid, "area_m2_max", None if value == "any" else int(value)); _wizard(cur, uid, chat_id, filter_id, "district")
+        cur.execute("SELECT basic FROM filters WHERE id=%s",(filter_id,)); basic=cur.fetchone()["basic"]
+        key="land_area_m2_max" if basic.get("category_key")=="land" else "area_m2_max"
+        _set_basic(cur, filter_id, uid, key, None if value == "any" else int(value))
+        cur.execute("SELECT basic FROM filters WHERE id=%s",(filter_id,)); basic=cur.fetchone()["basic"]
+        _wizard(cur, uid, chat_id, filter_id, "district" if basic.get("city")==["Bakı"] else "done")
     elif step == "district":
         _set_basic(cur, filter_id, uid, "district", None if value == "any" else [DISTRICTS[value][1]]); _wizard(cur, uid, chat_id, filter_id, "done")
 
@@ -380,13 +514,74 @@ def _additional(cur, uid: int, chat_id: int, filter_id: str) -> None:
     _screen(cur, uid, chat_id, text, rows)
 
 
-def _set_additional(cur, filter_id: str, uid: int, field: str, values: list[str] | None, strict: bool = False) -> None:
+def _set_additional(cur, filter_id: str, uid: int, field: str, values: list[str] | None, strict: bool = False, include_unknown: bool | None = None) -> None:
     cur.execute("SELECT additional FROM filters WHERE id=%s AND telegram_user_id=%s", (filter_id, uid)); row=cur.fetchone()
     if not row: return
     additional=dict(row["additional"])
     if values is None: additional.pop(field, None)
-    else: additional[field]={"values":values,"strict":strict}
+    else:
+        additional[field]={"values":values,"strict":strict}
+        if include_unknown is not None:
+            additional[field]["include_unknown"] = include_unknown
     cur.execute("UPDATE filters SET additional=%s::jsonb,updated_at=now() WHERE id=%s",(json.dumps(additional),filter_id))
+
+
+def _selected_additional(cur, filter_id: str, uid: int, field: str, all_values: set[str]) -> set[str]:
+    cur.execute("SELECT additional FROM filters WHERE id=%s AND telegram_user_id=%s", (filter_id, uid))
+    row = cur.fetchone()
+    rule = ((row or {}).get("additional") or {}).get(field)
+    if not rule:
+        return set(all_values)
+    selected = set(rule.get("values") or [])
+    if rule.get("include_unknown"):
+        selected.add("unknown")
+    return selected
+
+
+def _toggle_additional(cur, filter_id: str, uid: int, field: str, value: str, all_values: set[str]) -> None:
+    current = _selected_additional(cur, filter_id, uid, field, all_values)
+    if value == "all":
+        _set_additional(cur, filter_id, uid, field, None)
+        return
+    if current == all_values:
+        current = {value}
+    elif value in current:
+        current.remove(value)
+    else:
+        current.add(value)
+    if not current or current == all_values:
+        _set_additional(cur, filter_id, uid, field, None)
+    else:
+        _set_additional(cur, filter_id, uid, field, sorted(current - {"unknown"}), include_unknown="unknown" in current)
+
+
+def _choice_label(language: str, key: str, selected: bool) -> str:
+    return ("✅ " if selected else "❌ ") + _l(language, key)
+
+
+def _seller_screen(cur, uid: int, chat_id: int, filter_id: str) -> None:
+    language = _user_language(cur, uid)
+    selected = _selected_additional(cur, filter_id, uid, "seller_type", {"owner", "agency"})
+    rows = [
+        [(_choice_label(language, "owner", "owner" in selected), f"av:{filter_id}:seller:owner")],
+        [(_choice_label(language, "agency", "agency" in selected), f"av:{filter_id}:seller:agency")],
+        [(_l(language, "back"), f"additional:{filter_id}")],
+    ]
+    _screen(cur, uid, chat_id, f"<b>{_l(language, 'seller_question')}</b>\n{_l(language, 'choose_one_or_both')}", rows)
+
+
+def _repair_screen(cur, uid: int, chat_id: int, filter_id: str) -> None:
+    language = _user_language(cur, uid)
+    all_values = {"var", "yoxdur", "unknown"}
+    selected = _selected_additional(cur, filter_id, uid, "repair_status", all_values)
+    rows = [
+        [(_choice_label(language, "all_options", selected == all_values), f"av:{filter_id}:repair:all")],
+        [(_choice_label(language, "renovated", "var" in selected), f"av:{filter_id}:repair:var")],
+        [(_choice_label(language, "not_renovated", "yoxdur" in selected), f"av:{filter_id}:repair:yoxdur")],
+        [(_choice_label(language, "unknown", "unknown" in selected), f"av:{filter_id}:repair:unknown")],
+        [(_l(language, "back"), f"additional:{filter_id}")],
+    ]
+    _screen(cur, uid, chat_id, f"<b>{_l(language, 'repair_question')}</b>\n\n{_l(language, 'optional_field')}", rows)
 
 
 def handle_update(update: dict[str, Any]) -> dict[str, bool]:
@@ -406,6 +601,16 @@ def handle_update(update: dict[str, Any]) -> dict[str, bool]:
         data, text = callback.get("data", ""), (update.get("message") or {}).get("text", "")
         admin_id=int(os.environ["TELEGRAM_ADMIN_USER_ID"])
         contact=(update.get("message") or {}).get("contact")
+        cur.execute("SELECT wizard FROM users WHERE telegram_user_id=%s",(uid,)); wizard=(cur.fetchone() or {}).get("wizard") or {}
+        if contact and uid == admin_id:
+            identifiers=[]
+            if contact.get("user_id"):
+                identifiers.append(("telegram_id", str(contact["user_id"])))
+            if contact.get("phone_number"):
+                identifiers.append(("phone", contact["phone_number"]))
+            if identifiers:
+                _access_confirmation(cur, uid, chat_id, identifiers, contact)
+                return {"ok": True}
         if contact and int(contact.get("user_id") or 0)==uid:
             try:
                 phone=_normalize_identifier("phone",contact.get("phone_number") or "")
@@ -413,7 +618,6 @@ def handle_update(update: dict[str, Any]) -> dict[str, bool]:
                 _apply_identifier_decision(cur,uid,{**user,"phone_normalized":phone})
             except ValueError:
                 pass
-        cur.execute("SELECT wizard FROM users WHERE telegram_user_id=%s",(uid,)); wizard=(cur.fetchone() or {}).get("wizard") or {}
         if text and uid==admin_id and wizard.get("await")=="access_identifier" and not text.startswith("/"):
             language=profile["language"]
             try:
@@ -425,6 +629,27 @@ def handle_update(update: dict[str, Any]) -> dict[str, bool]:
             except ValueError:
                 _screen(cur,uid,chat_id,f"<b>{_l(language,'recognize_failed')}</b>\n{_l(language,'try_again')}",[[(_l(language,'cancel'),'settings:access')]])
             return {"ok":True}
+        if text and uid == admin_id and not text.startswith("/") and not callback:
+            try:
+                if re.fullmatch(r"\d{9,12}", text.strip()) and not text.strip().startswith(("0", "994")):
+                    cur.execute("SELECT 1 FROM users WHERE telegram_user_id=%s", (int(text.strip()),))
+                    known_id = bool(cur.fetchone())
+                    phone = _normalize_identifier("phone", text)
+                    cur.execute("SELECT 1 FROM users WHERE phone_normalized=%s", (phone,))
+                    known_phone = bool(cur.fetchone())
+                    if not known_id and not known_phone:
+                        cur.execute("UPDATE users SET wizard=%s::jsonb WHERE telegram_user_id=%s",(json.dumps({"await":"identifier_kind","raw":text.strip()}),uid))
+                        language=profile["language"]
+                        _screen(cur,uid,chat_id,_l(language,"identifier_type_prompt"),[[(_l(language,"as_telegram_id"),"access:identify:telegram_id")],[(_l(language,"as_phone"),"access:identify:phone")],[(_l(language,"cancel"),"settings:access")]])
+                        return {"ok":True}
+                    kind = "telegram_id" if known_id else "phone"
+                    _access_confirmation(cur, uid, chat_id, [(kind, text)])
+                    return {"ok": True}
+                kind, raw = _infer_identifier(text)
+                _access_confirmation(cur, uid, chat_id, [(kind, raw)])
+                return {"ok": True}
+            except ValueError:
+                pass
         if text.startswith("/start"):
             _apply_identifier_decision(cur,uid,user)
             cur.execute("SELECT state,language,language_selected FROM users WHERE telegram_user_id=%s",(uid,)); profile=cur.fetchone()
@@ -463,6 +688,12 @@ def handle_update(update: dict[str, Any]) -> dict[str, bool]:
         elif data=="main": _main(cur,uid,chat_id,profile["language"])
         elif data=="settings": _settings(cur,uid,chat_id,uid==admin_id)
         elif data=="settings:language": _language_screen(cur,uid,chat_id)
+        elif data.startswith("settings:city:"):
+            _city_screen(cur,uid,chat_id,int(data.rsplit(":",1)[1]))
+        elif data.startswith("city:set:"):
+            _,_,city_id,_page=data.split(":",3); city_id=int(city_id); city_name=CITY_BY_ID[city_id]
+            cur.execute("UPDATE users SET default_city_id=%s,default_city_name=%s WHERE telegram_user_id=%s",(city_id,city_name,uid))
+            _screen(cur,uid,chat_id,_l(profile["language"],"city_saved",city=city_name),[[(_l(profile["language"],"back"),"settings")]])
         elif data=="settings:payment":
             language=profile["language"]
             _screen(cur,uid,chat_id,f"<b>{_l(language, 'payment')}</b>\n{_l(language, 'payment_off')}",[[(_l(language, 'back'),'settings')]])
@@ -484,13 +715,31 @@ def handle_update(update: dict[str, Any]) -> dict[str, bool]:
             kind=data.rsplit(":",1)[1]; cur.execute("UPDATE users SET wizard=%s::jsonb WHERE telegram_user_id=%s",(json.dumps({"await":"access_identifier","decision":"approved","kind":kind}),uid)); _screen(cur,uid,chat_id,_l(profile["language"],"send_identifier"),[[(_l(profile["language"],"cancel"),'settings:access')]])
         elif data.startswith("access:blocked:") and uid==admin_id:
             kind=data.rsplit(":",1)[1]; cur.execute("UPDATE users SET wizard=%s::jsonb WHERE telegram_user_id=%s",(json.dumps({"await":"access_identifier","decision":"blocked","kind":kind}),uid)); _screen(cur,uid,chat_id,_l(profile["language"],"send_block_identifier"),[[(_l(profile["language"],"cancel"),'settings:access')]])
+        elif data.startswith("access:confirm:") and uid==admin_id:
+            decision=data.rsplit(":",1)[1]
+            cur.execute("SELECT wizard FROM users WHERE telegram_user_id=%s",(uid,)); pending=(cur.fetchone() or {}).get("wizard") or {}
+            if pending.get("await")=="access_confirmation" and pending.get("decision")==decision:
+                linked=None; displays=[]
+                for item in pending.get("identifiers") or []:
+                    display,item_linked=_store_access_decision(cur,uid,item["kind"],item["value"],decision)
+                    displays.append(display); linked=linked or item_linked
+                cur.execute("UPDATE users SET wizard='{}'::jsonb WHERE telegram_user_id=%s",(uid,))
+                result=_l(profile["language"],"access_added" if decision=="approved" else "access_blocked")
+                suffix=f"\nTelegram ID: <code>{linked}</code>" if linked else "\n"+_l(profile["language"],"rule_later")
+                _screen(cur,uid,chat_id,f"<b>{_l(profile['language'],'access_updated')}</b>\n{escape(', '.join(displays))}: {result}.{suffix}",[[(_l(profile["language"],"back"),'settings:access')]])
+        elif data.startswith("access:identify:") and uid==admin_id:
+            kind=data.rsplit(":",1)[1]
+            cur.execute("SELECT wizard FROM users WHERE telegram_user_id=%s",(uid,)); pending=(cur.fetchone() or {}).get("wizard") or {}
+            if pending.get("await")=="identifier_kind":
+                _access_confirmation(cur,uid,chat_id,[(kind,pending["raw"])])
         elif data=="access:list" and uid==admin_id:
             cur.execute("SELECT identifier_type,display_value,decision,linked_telegram_user_id FROM access_identifiers ORDER BY updated_at DESC LIMIT 30"); rules=cur.fetchall()
             language=profile["language"]
             body=f"<b>{_l(language,'rules_title')}</b>\n\n"+"\n".join(f"{x['display_value']} — {_l(language,'allowed' if x['decision']=='approved' else 'blocked')}"+(f" · <code>{x['linked_telegram_user_id']}</code>" if x['linked_telegram_user_id'] else "") for x in rules) if rules else _l(language,"rules_empty")
             _screen(cur,uid,chat_id,body,[[(_l(language,'back'),'settings:access')]])
         elif data=="filter:new":
-            cur.execute("INSERT INTO filters(telegram_user_id,name,is_enabled) VALUES(%s,%s,false) RETURNING id",(uid,_l(profile["language"],"new_filter"))); _wizard(cur,uid,chat_id,str(cur.fetchone()["id"]),"deal")
+            cur.execute("SELECT default_city_name FROM users WHERE telegram_user_id=%s",(uid,)); city=(cur.fetchone() or {}).get("default_city_name") or "Bakı"
+            cur.execute("INSERT INTO filters(telegram_user_id,name,is_enabled,basic) VALUES(%s,%s,false,%s::jsonb) RETURNING id",(uid,_l(profile["language"],"new_filter"),json.dumps({"city":[city]}))); _wizard(cur,uid,chat_id,str(cur.fetchone()["id"]),"deal")
         elif data.startswith("filter:cancel:"):
             filter_id=data.rsplit(":",1)[1]
             cur.execute("UPDATE filters SET deleted_at=now(),is_enabled=false WHERE id=%s AND telegram_user_id=%s AND is_enabled=false",(filter_id,uid))
@@ -514,11 +763,12 @@ def handle_update(update: dict[str, Any]) -> dict[str, bool]:
         elif data.startswith("additional:"): _additional(cur,uid,chat_id,data.split(":",1)[1])
         elif data.startswith("ad:"):
             _,fid,field=data.split(":",2)
-            language=profile["language"]
-            if field=="seller": _screen(cur,uid,chat_id,f"<b>{_l(language,'seller_question')}</b>",[[(_l(language,'any_seller'),f'av:{fid}:seller:any')],[(_l(language,'owner_unknown'),f'av:{fid}:seller:owner')],[(_l(language,'owner_strict'),f'av:{fid}:seller:owner_strict')],[(_l(language,'agency_unknown'),f'av:{fid}:seller:agency')],[(_l(language,'agency_strict'),f'av:{fid}:seller:agency_strict')]])
-            else: _screen(cur,uid,chat_id,f"<b>{_l(language,'repair_question')}</b>",[[(_l(language,'any_repair'),f'av:{fid}:repair:any')],[(_l(language,'repair_unknown'),f'av:{fid}:repair:yes')],[(_l(language,'repair_strict'),f'av:{fid}:repair:yes_strict')],[(_l(language,'no_repair'),f'av:{fid}:repair:no')]])
+            if field=="seller": _seller_screen(cur,uid,chat_id,fid)
+            else: _repair_screen(cur,uid,chat_id,fid)
         elif data.startswith("av:"):
             _,fid,field,value=data.split(":",3)
-            dbfield='seller_type' if field=='seller' else 'repair_status'; mapping={'owner':'owner','owner_strict':'owner','agency':'agency','agency_strict':'agency','yes':'var','yes_strict':'var','no':'yoxdur'}
-            _set_additional(cur,fid,uid,dbfield,None if value=='any' else [mapping[value]],value.endswith('_strict')); _additional(cur,uid,chat_id,fid)
+            if field=='seller':
+                _toggle_additional(cur,fid,uid,'seller_type',value,{'owner','agency'}); _seller_screen(cur,uid,chat_id,fid)
+            else:
+                _toggle_additional(cur,fid,uid,'repair_status',value,{'var','yoxdur','unknown'}); _repair_screen(cur,uid,chat_id,fid)
     return {"ok": True}

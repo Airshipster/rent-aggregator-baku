@@ -43,6 +43,9 @@ class ListingDetail:
     source: str = "source"
     is_deleted: bool = False
     raw_status: str | None = None
+    has_bill_of_sale: bool | None = None
+    has_mortgage: bool | None = None
+    land_area_m2: float | None = None
 
 
 @dataclass

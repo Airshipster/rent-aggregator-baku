@@ -1,0 +1,2 @@
+ALTER TABLE users ADD COLUMN IF NOT EXISTS default_city_id integer NOT NULL DEFAULT 1;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS default_city_name text NOT NULL DEFAULT 'Bakı';

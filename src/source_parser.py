@@ -21,6 +21,8 @@ query SearchItems($first:Int,$filter:ItemFilter,$sort:ItemConnectionSort!,$curso
 }
 """
 
+ALL_CITIES_QUERY = "query AllCities { cities { id name } }"
+
 
 DETAIL_QUERY = """
 query ItemDetail($id:ID!){
@@ -33,6 +35,10 @@ query ItemDetail($id:ID!){
     floor
     floors
     hasRepair
+    hasBillOfSale
+    hasMortgage
+    isLeased
+    isPaidDaily
     contactName
     contactTypeName
     buildingTypeName
@@ -99,6 +105,10 @@ class SourceParser:
             cursor = page_info.get("endCursor")
         return items
 
+    def list_cities(self) -> list[tuple[int, str]]:
+        data = self.client.graphql(ALL_CITIES_QUERY, {})
+        return [(int(item["id"]), str(item["name"]).strip()) for item in data.get("cities") or []]
+
     def get_detail(self, listing_id: str) -> ListingDetail | None:
         data = self.client.graphql(DETAIL_QUERY, {"id": listing_id})
         node = data.get("item")
@@ -116,6 +126,7 @@ class SourceParser:
         path = node.get("path") or f"/items/{listing_id}"
         price = node.get("price") or {}
         area = node.get("area") or {}
+        land_area = node.get("landArea") or {}
         city = node.get("city") or {}
         location = node.get("location") or {}
         category = node.get("category") or {}
@@ -133,7 +144,7 @@ class SourceParser:
             title=self._title(node),
             price=price.get("total"),
             currency=price.get("currency"),
-            rent_period=None,
+            rent_period="daily" if node.get("isPaidDaily") else "monthly" if node.get("isLeased") else None,
             city=city.get("name"),
             district=self._district(landmarks),
             metro=self._metro(landmarks, location.get("fullName")),
@@ -158,6 +169,9 @@ class SourceParser:
             updated_at=parse_dt(node.get("updatedAt")),
             is_deleted=bool(node.get("isExpiredManually")),
             raw_status="expired" if node.get("isExpiredManually") else None,
+            has_bill_of_sale=node.get("hasBillOfSale"),
+            has_mortgage=node.get("hasMortgage"),
+            land_area_m2=land_area.get("value"),
         )
 
     def _landmarks(self, node: dict[str, Any]) -> list[str]:

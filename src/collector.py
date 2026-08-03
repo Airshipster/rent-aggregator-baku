@@ -9,10 +9,11 @@ from .utils import env_int, is_recent, sleep_soft
 
 
 def filters() -> list[dict]:
-    # Empty category restrictions intentionally collect every property category in Baku.
+    # Empty city/category restrictions cover the national recent feed. Rotating city
+    # filters below prevent less active cities from being hidden by Baku listings.
     raw = os.getenv(
         "COLLECTOR_FILTERS_JSON",
-        '[{"leased":true,"paidDaily":false,"cityId":1},{"leased":true,"paidDaily":true,"cityId":1},{"leased":false,"cityId":1}]',
+        '[{"leased":true,"paidDaily":false},{"leased":true,"paidDaily":true},{"leased":false}]',
     )
     value = json.loads(raw)
     if not isinstance(value, list) or not all(isinstance(item, dict) for item in value):
@@ -23,18 +24,21 @@ def filters() -> list[dict]:
 STATE_PATH = Path("state/central_collector.json")
 
 
-def load_seen() -> list[str]:
+def load_state() -> dict:
     try:
         value = json.loads(STATE_PATH.read_text(encoding="utf-8"))
-        return [str(item) for item in value.get("seen_listing_ids", [])]
+        return {
+            "seen_listing_ids": [str(item) for item in value.get("seen_listing_ids", [])],
+            "city_cursor": int(value.get("city_cursor") or 0),
+        }
     except (FileNotFoundError, json.JSONDecodeError, AttributeError):
-        return []
+        return {"seen_listing_ids": [], "city_cursor": 0}
 
 
-def save_seen(values: list[str]) -> None:
+def save_state(values: list[str], city_cursor: int) -> None:
     STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
     STATE_PATH.write_text(
-        json.dumps({"seen_listing_ids": values[-5000:]}, ensure_ascii=False, indent=2) + "\n",
+        json.dumps({"seen_listing_ids": values[-5000:], "city_cursor": city_cursor}, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
 
@@ -42,14 +46,23 @@ def save_seen(values: list[str]) -> None:
 def main() -> None:
     parser = SourceParser(SourceClient())
     parser.client.get_start_page()
+    state = load_state()
+    base_filters = filters()
+    cities = parser.list_cities()
+    batch_size = max(1, env_int("COLLECTOR_CITY_BATCH_SIZE", 5))
+    cursor = state["city_cursor"] % max(1, len(cities))
+    city_batch = (cities + cities)[cursor:cursor + min(batch_size, len(cities))]
+    expanded_filters = list(base_filters)
+    for city_id, _city_name in city_batch:
+        expanded_filters.extend([{**item, "cityId": city_id} for item in base_filters if "cityId" not in item])
     batches, known = [], set()
-    for item_filter in filters():
+    for item_filter in expanded_filters:
         batch = []
         for summary in parser.list_recent(env_int("MAX_LISTINGS_PER_RUN", 100), pages=env_int("LIST_PAGES_PER_RUN", 3), item_filter=item_filter):
             if summary.listing_id not in known and is_recent(summary.updated_at, env_int("MAX_NEW_AGE_HOURS", 24)):
                 known.add(summary.listing_id); batch.append((summary, item_filter))
         batches.append(batch)
-    seen_order = load_seen()
+    seen_order = state["seen_listing_ids"]
     seen = set(seen_order)
     candidates = []
     while any(batches) and len(candidates) < env_int("MAX_DETAIL_FETCHES_PER_RUN", 100):
@@ -75,8 +88,9 @@ def main() -> None:
         except Exception as exc:
             print(f"detail_error={summary.listing_id}:{type(exc).__name__}")
     submit(details)
-    save_seen(seen_order + submitted_ids)
-    print(f"collected={len(details)}")
+    next_cursor = (cursor + len(city_batch)) % max(1, len(cities))
+    save_state(seen_order + submitted_ids, next_cursor)
+    print(f"collected={len(details)} city_batch={','.join(str(item[0]) for item in city_batch)} next_city_cursor={next_cursor}")
 
 
 if __name__ == "__main__": main()
