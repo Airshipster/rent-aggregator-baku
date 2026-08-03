@@ -49,8 +49,10 @@ def process_channel_one() -> bool:
             cur.execute("UPDATE channel_outbox_tasks SET status='sent',sent_at=now(),last_error=NULL WHERE id=%s",(task["id"],))
         except Exception as exc:
             attempts=task["attempts"]+1
-            cur.execute("UPDATE channel_outbox_tasks SET status='failed',attempts=%s,next_retry_at=%s,last_error=%s WHERE id=%s",(attempts,retry_at(attempts),type(exc).__name__,task["id"]))
-            cur.execute("UPDATE channel_posts SET status='failed',attempts=attempts+1,next_retry_at=%s,last_error=%s,updated_at=now() WHERE id=%s",(retry_at(attempts),type(exc).__name__,task["channel_post_id"]))
+            error=f"{type(exc).__name__}: {exc}"[:500]
+            print(f"channel_delivery_error task={task['id']} attempt={attempts} error={error}", flush=True)
+            cur.execute("UPDATE channel_outbox_tasks SET status='failed',attempts=%s,next_retry_at=%s,last_error=%s WHERE id=%s",(attempts,retry_at(attempts),error,task["id"]))
+            cur.execute("UPDATE channel_posts SET status='failed',attempts=attempts+1,next_retry_at=%s,last_error=%s,updated_at=now() WHERE id=%s",(retry_at(attempts),error,task["channel_post_id"]))
         return True
 
 
@@ -83,8 +85,10 @@ def process_one() -> bool:
             cur.execute("UPDATE outbox_tasks SET status='sent',sent_at=now(),last_error=NULL WHERE id=%s",(task["id"],))
         except Exception as exc:
             attempts=task["attempts"]+1
-            cur.execute("UPDATE outbox_tasks SET status='failed',attempts=%s,next_retry_at=%s,last_error=%s WHERE id=%s",(attempts,retry_at(attempts),type(exc).__name__,task["id"]))
-            cur.execute("UPDATE deliveries SET status='failed',attempts=attempts+1,next_retry_at=%s,last_error=%s,updated_at=now() WHERE id=%s",(retry_at(attempts),type(exc).__name__,task["delivery_id"]))
+            error=f"{type(exc).__name__}: {exc}"[:500]
+            print(f"private_delivery_error task={task['id']} attempt={attempts} error={error}", flush=True)
+            cur.execute("UPDATE outbox_tasks SET status='failed',attempts=%s,next_retry_at=%s,last_error=%s WHERE id=%s",(attempts,retry_at(attempts),error,task["id"]))
+            cur.execute("UPDATE deliveries SET status='failed',attempts=attempts+1,next_retry_at=%s,last_error=%s,updated_at=now() WHERE id=%s",(retry_at(attempts),error,task["delivery_id"]))
         return True
 
 
