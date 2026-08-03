@@ -1,0 +1,60 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: rent_aggregator
+      POSTGRES_USER: rent_aggregator
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rent_aggregator -d rent_aggregator"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  app:
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://rent_aggregator:${POSTGRES_PASSWORD}@postgres:5432/rent_aggregator
+    ports:
+      - "127.0.0.1:8080:8080"
+    networks:
+      - default
+      - traefik
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: traefik
+      traefik.http.routers.rent-aggregator-baku-webhook.rule: "Host(`scitopus.com`) && Path(`/telegram/bakuarenda/webhook`)"
+      traefik.http.routers.rent-aggregator-baku-webhook.priority: "100"
+      traefik.http.routers.rent-aggregator-baku-webhook.tls: "true"
+      traefik.http.routers.rent-aggregator-baku-webhook.tls.certresolver: le
+      traefik.http.routers.rent-aggregator-baku-webhook.service: rent-aggregator-baku
+      traefik.http.routers.rent-aggregator-baku-ingest.rule: "Host(`scitopus.com`) && Path(`/v1/ingest/listings`)"
+      traefik.http.routers.rent-aggregator-baku-ingest.priority: "100"
+      traefik.http.routers.rent-aggregator-baku-ingest.tls: "true"
+      traefik.http.routers.rent-aggregator-baku-ingest.tls.certresolver: le
+      traefik.http.routers.rent-aggregator-baku-ingest.service: rent-aggregator-baku
+      traefik.http.services.rent-aggregator-baku.loadbalancer.server.port: "8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: uvicorn server.app:app --host 0.0.0.0 --port 8080
+  worker:
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://rent_aggregator:${POSTGRES_PASSWORD}@postgres:5432/rent_aggregator
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: python -m server.worker
+volumes:
+  postgres_data:
+networks:
+  traefik:
+    external: true

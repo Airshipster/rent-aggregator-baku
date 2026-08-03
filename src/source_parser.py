@@ -29,6 +29,8 @@ query ItemDetail($id:ID!){
     path
     address
     description
+    leased
+    paidDaily
     rooms
     floor
     floors
@@ -66,7 +68,7 @@ class SourceParser:
     def __init__(self, client: SourceClient) -> None:
         self.client = client
 
-    def list_recent(self, limit: int, pages: int = 1) -> list[ListingSummary]:
+    def list_recent(self, limit: int, pages: int = 1, item_filter: dict[str, Any] | None = None) -> list[ListingSummary]:
         items: list[ListingSummary] = []
         cursor = None
         for _ in range(max(1, pages)):
@@ -74,7 +76,7 @@ class SourceParser:
                 SEARCH_QUERY,
                 {
                     "first": limit,
-                    "filter": {"leased": True, "cityId": 1},
+                    "filter": item_filter if item_filter is not None else {"leased": True, "cityId": 1},
                     "sort": "BUMPED_AT_DESC",
                     "cursor": cursor,
                 },
@@ -133,7 +135,7 @@ class SourceParser:
             title=self._title(node),
             price=price.get("total"),
             currency=price.get("currency"),
-            rent_period="monthly",
+            rent_period="daily" if node.get("paidDaily") else "monthly" if node.get("leased") else None,
             city=city.get("name"),
             district=self._district(landmarks),
             metro=self._metro(landmarks, location.get("fullName")),

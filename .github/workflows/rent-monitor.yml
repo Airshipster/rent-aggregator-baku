@@ -31,6 +31,8 @@ jobs:
       PRIVATE_BACKFILL_USER_IDS: ${{ secrets.PRIVATE_BACKFILL_USER_IDS }}
       SOURCE_START_URL: ${{ secrets.SOURCE_START_URL }}
       SOURCE_GRAPHQL_PATH: ${{ secrets.SOURCE_GRAPHQL_PATH }}
+      CENTRAL_INGEST_URL: ${{ secrets.CENTRAL_INGEST_URL }}
+      CENTRAL_INGEST_SHARED_SECRET: ${{ secrets.CENTRAL_INGEST_SHARED_SECRET }}
       ENABLE_PUBLIC_CHANNEL: ${{ vars.ENABLE_PUBLIC_CHANNEL || 'false' }}
       ENABLE_PRIVATE_FULL: ${{ vars.ENABLE_PRIVATE_FULL || 'true' }}
       PUBLIC_LANGUAGE: ${{ vars.PUBLIC_LANGUAGE || 'az' }}
@@ -56,7 +58,7 @@ jobs:
       - run: python -m pip install -r requirements.txt
       - run: python -m src.main
       - name: commit fallback state
-        if: always()
+        if: ${{ always() && !env.CENTRAL_INGEST_URL }}
         run: |
           if [ -n "$(git status --porcelain state/last_seen.json)" ]; then
             git config user.name "github-actions[bot]"
@@ -64,4 +66,14 @@ jobs:
             git add state/last_seen.json
             git commit -m "Update monitor state"
             git push
+      - name: commit central collector state
+        if: ${{ success() && env.CENTRAL_INGEST_URL }}
+        run: |
+          if [ -n "$(git status --porcelain state/central_collector.json)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add state/central_collector.json
+            git commit -m "Update central collector state"
+            git push
+          fi
           fi

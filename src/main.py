@@ -12,6 +12,10 @@ from .utils import env_bool, env_int, image_datetime, is_recent, now_utc, parse_
 
 
 def main() -> None:
+    if os.getenv("CENTRAL_INGEST_URL"):
+        from .collector import main as central_collector_main
+        central_collector_main()
+        return
     stats = RunStats()
     dry_run = env_bool("DRY_RUN", False)
     telegram = None if dry_run and not os.getenv("TELEGRAM_BOT_TOKEN") else TelegramClient()
