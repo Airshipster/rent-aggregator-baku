@@ -15,6 +15,7 @@ from src.utils import parse_dt
 
 
 _last_channel_send = 0.0
+_last_private_send: dict[int, float] = {}
 
 
 def retry_at(attempt: int, error: Exception | str | None = None) -> datetime:
@@ -30,6 +31,15 @@ def throttle_channel() -> None:
     if wait>0:
         time.sleep(wait)
     _last_channel_send=time.monotonic()
+
+
+def throttle_private(chat_id: int) -> None:
+    interval=float(os.getenv("PRIVATE_SEND_INTERVAL_SECONDS","1.1"))
+    last=_last_private_send.get(chat_id,0.0)
+    wait=interval-(time.monotonic()-last)
+    if wait>0:
+        time.sleep(wait)
+    _last_private_send[chat_id]=time.monotonic()
 
 
 def telegram(method: str, payload: dict):
@@ -90,6 +100,7 @@ def process_one() -> bool:
         if not task: return False
         cur.execute("UPDATE outbox_tasks SET status='processing',locked_at=now() WHERE id=%s",(task["id"],))
         try:
+            throttle_private(int(task["chat_id"]))
             if task["task_type"]=="send":
                 item=listing(task["payload"])
                 rich_html,rich_media=format_private_rich(item,item.image_urls,task["language"])
