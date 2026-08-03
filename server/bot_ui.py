@@ -1128,7 +1128,9 @@ def handle_update(update: dict[str, Any]) -> dict[str, bool]:
         elif data.startswith("filter:view:"):
             _filter_details(cur, uid, chat_id, data.rsplit(":", 1)[1])
         elif data.startswith("filter:edit:"):
-            _wizard(cur, uid, chat_id, data.rsplit(":", 1)[1], "deal")
+            filter_id = data.rsplit(":", 1)[1]
+            cur.execute("UPDATE filters SET is_enabled=false,updated_at=now() WHERE id=%s AND telegram_user_id=%s AND deleted_at IS NULL", (filter_id, uid))
+            _wizard(cur, uid, chat_id, filter_id, "deal")
         elif data.startswith("filter:toggle:"):
             filter_id = data.rsplit(":", 1)[1]
             cur.execute("UPDATE filters SET is_enabled=NOT is_enabled,updated_at=now() WHERE id=%s AND telegram_user_id=%s AND deleted_at IS NULL RETURNING is_enabled", (filter_id, uid))
