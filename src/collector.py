@@ -10,7 +10,10 @@ from .utils import env_int, sleep_soft
 
 def filters() -> list[dict]:
     # Empty category restrictions intentionally collect every property category in Baku.
-    raw = os.getenv("COLLECTOR_FILTERS_JSON", '[{"leased":true,"cityId":1},{"leased":false,"cityId":1}]')
+    raw = os.getenv(
+        "COLLECTOR_FILTERS_JSON",
+        '[{"leased":true,"paidDaily":false,"cityId":1},{"leased":true,"paidDaily":true,"cityId":1},{"leased":false,"cityId":1}]',
+    )
     value = json.loads(raw)
     if not isinstance(value, list) or not all(isinstance(item, dict) for item in value):
         raise ValueError("COLLECTOR_FILTERS_JSON must be a JSON array of source filters")
@@ -59,10 +62,18 @@ def main() -> None:
     submitted_ids = []
     for summary, item_filter in candidates:
         sleep_soft()
-        detail = parser.get_detail(summary.listing_id)
-        if detail:
-            details.append(listing_payload(detail, "rent" if item_filter.get("leased") else "sale"))
-            submitted_ids.append(summary.listing_id)
+        try:
+            detail = parser.get_detail(summary.listing_id)
+            if detail:
+                deal_type = "rent" if item_filter.get("leased") else "sale"
+                payload = listing_payload(detail, deal_type)
+                payload["rent_period"] = (
+                    "daily" if item_filter.get("paidDaily") else "monthly" if deal_type == "rent" else None
+                )
+                details.append(payload)
+                submitted_ids.append(summary.listing_id)
+        except Exception as exc:
+            print(f"detail_error={summary.listing_id}:{type(exc).__name__}")
     submit(details)
     save_seen(seen_order + submitted_ids)
     print(f"collected={len(details)}")

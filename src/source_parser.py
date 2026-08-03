@@ -29,8 +29,6 @@ query ItemDetail($id:ID!){
     path
     address
     description
-    leased
-    paidDaily
     rooms
     floor
     floors
@@ -135,7 +133,7 @@ class SourceParser:
             title=self._title(node),
             price=price.get("total"),
             currency=price.get("currency"),
-            rent_period="daily" if node.get("paidDaily") else "monthly" if node.get("leased") else None,
+            rent_period=None,
             city=city.get("name"),
             district=self._district(landmarks),
             metro=self._metro(landmarks, location.get("fullName")),
