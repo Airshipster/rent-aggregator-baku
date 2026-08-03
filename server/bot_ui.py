@@ -57,6 +57,7 @@ UI["ru"].update({
     "request_title":"Новая заявка на доступ", "name":"Имя", "not_set":"Не указано", "approve":"Одобрить", "reject":"Отклонить",
     "send_identifier":"Отправьте ID, username или телефон одним сообщением.", "send_block_identifier":"Отправьте значение, которое нужно заблокировать.",
     "rules_title":"Правила доступа", "rules_empty":"Правил пока нет.", "allowed":"разрешён", "blocked":"заблокирован",
+    "filter_ready":"Фильтр настроен", "activate":"Сохранить и включить",
 })
 UI["az"].update({
     "area_any":"Fərqi yoxdur", "done":"Hazırdır", "seller":"Elanı kim yerləşdirib", "repair":"Təmir",
@@ -77,6 +78,7 @@ UI["az"].update({
     "request_title":"Yeni giriş müraciəti", "name":"Ad", "not_set":"Göstərilməyib", "approve":"Təsdiqlə", "reject":"Rədd et",
     "send_identifier":"ID, username və ya telefonu bir mesajla göndərin.", "send_block_identifier":"Bloklanacaq dəyəri göndərin.",
     "rules_title":"Giriş qaydaları", "rules_empty":"Hələ qayda yoxdur.", "allowed":"icazə verilib", "blocked":"bloklanıb",
+    "filter_ready":"Filtr tənzimləndi", "activate":"Yadda saxla və aktiv et",
 })
 UI["en"].update({
     "area_any":"Any", "done":"Done", "seller":"Posted by", "repair":"Renovation",
@@ -97,6 +99,7 @@ UI["en"].update({
     "request_title":"New access request", "name":"Name", "not_set":"Not specified", "approve":"Approve", "reject":"Reject",
     "send_identifier":"Send the ID, username, or phone number in one message.", "send_block_identifier":"Send the value to block.",
     "rules_title":"Access rules", "rules_empty":"No rules yet.", "allowed":"allowed", "blocked":"blocked",
+    "filter_ready":"Filter configured", "activate":"Save and enable",
 })
 
 
@@ -313,7 +316,7 @@ def _enqueue_today(cur, uid: int, filter_id: str) -> int:
 def _wizard(cur, uid: int, chat_id: int, filter_id: str, step: str, context: dict[str, Any] | None = None) -> None:
     context = context or {}
     language = _user_language(cur, uid)
-    back = [(_l(language, "cancel"), "main")]
+    back = [(_l(language, "cancel"), f"filter:cancel:{filter_id}")]
     if step == "deal":
         _screen(cur, uid, chat_id, f"<b>{_l(language, 'deal')}</b>", [[(_l(language, "rent"), f"wf:{filter_id}:deal:rent")], [(_l(language, "sale"), f"wf:{filter_id}:deal:sale")], back])
     elif step == "period":
@@ -345,9 +348,7 @@ def _wizard(cur, uid: int, chat_id: int, filter_id: str, step: str, context: dic
         rows.append(back)
         _screen(cur, uid, chat_id, f"<b>{_l(language, 'district')}</b>", rows)
     elif step == "done":
-        queued=context.get("queued",0)
-        note="\n" + (_l(language, "found", count=queued) if queued else _l(language, "none_today"))
-        _screen(cur, uid, chat_id, f"<b>{_l(language, 'saved')}</b>"+note, [[(_l(language, "additional"), f"additional:{filter_id}")], [(_l(language, "main"), "main")]])
+        _screen(cur, uid, chat_id, f"<b>{_l(language, 'filter_ready')}</b>", [[(_l(language, "additional"), f"additional:{filter_id}")], [(_l(language, "activate"), f"filter:activate:{filter_id}")]])
 
 
 def _wizard_callback(cur, uid: int, chat_id: int, data: str) -> None:
@@ -369,13 +370,13 @@ def _wizard_callback(cur, uid: int, chat_id: int, data: str) -> None:
     elif step == "amax":
         _set_basic(cur, filter_id, uid, "area_m2_max", None if value == "any" else int(value)); _wizard(cur, uid, chat_id, filter_id, "district")
     elif step == "district":
-        _set_basic(cur, filter_id, uid, "district", None if value == "any" else [DISTRICTS[value][1]]); queued=_enqueue_today(cur,uid,filter_id); _wizard(cur, uid, chat_id, filter_id, "done",{"queued":queued})
+        _set_basic(cur, filter_id, uid, "district", None if value == "any" else [DISTRICTS[value][1]]); _wizard(cur, uid, chat_id, filter_id, "done")
 
 
 def _additional(cur, uid: int, chat_id: int, filter_id: str) -> None:
     language = _user_language(cur, uid)
     text = f"<b>{_l(language, 'additional')}</b>\n\n{_l(language, 'additional_warning')}"
-    rows = [[(_l(language, "seller"), f"ad:{filter_id}:seller")], [(_l(language, "repair"), f"ad:{filter_id}:repair")], [(_l(language, "done"), "main")]]
+    rows = [[(_l(language, "seller"), f"ad:{filter_id}:seller")], [(_l(language, "repair"), f"ad:{filter_id}:repair")], [(_l(language, "activate"), f"filter:activate:{filter_id}")]]
     _screen(cur, uid, chat_id, text, rows)
 
 
@@ -489,7 +490,18 @@ def handle_update(update: dict[str, Any]) -> dict[str, bool]:
             body=f"<b>{_l(language,'rules_title')}</b>\n\n"+"\n".join(f"{x['display_value']} — {_l(language,'allowed' if x['decision']=='approved' else 'blocked')}"+(f" · <code>{x['linked_telegram_user_id']}</code>" if x['linked_telegram_user_id'] else "") for x in rules) if rules else _l(language,"rules_empty")
             _screen(cur,uid,chat_id,body,[[(_l(language,'back'),'settings:access')]])
         elif data=="filter:new":
-            cur.execute("INSERT INTO filters(telegram_user_id,name) VALUES(%s,%s) RETURNING id",(uid,_l(profile["language"],"new_filter"))); _wizard(cur,uid,chat_id,str(cur.fetchone()["id"]),"deal")
+            cur.execute("INSERT INTO filters(telegram_user_id,name,is_enabled) VALUES(%s,%s,false) RETURNING id",(uid,_l(profile["language"],"new_filter"))); _wizard(cur,uid,chat_id,str(cur.fetchone()["id"]),"deal")
+        elif data.startswith("filter:cancel:"):
+            filter_id=data.rsplit(":",1)[1]
+            cur.execute("UPDATE filters SET deleted_at=now(),is_enabled=false WHERE id=%s AND telegram_user_id=%s AND is_enabled=false",(filter_id,uid))
+            _main(cur,uid,chat_id,profile["language"])
+        elif data.startswith("filter:activate:"):
+            filter_id=data.rsplit(":",1)[1]
+            cur.execute("UPDATE filters SET is_enabled=true,updated_at=now() WHERE id=%s AND telegram_user_id=%s AND deleted_at IS NULL RETURNING id",(filter_id,uid))
+            queued=_enqueue_today(cur,uid,filter_id) if cur.fetchone() else 0
+            language=profile["language"]
+            note=_l(language,"found",count=queued) if queued else _l(language,"none_today")
+            _screen(cur,uid,chat_id,f"<b>{_l(language,'saved')}</b>\n{note}",[[(_l(language,"main"),"main")]])
         elif data.startswith("wf:"): _wizard_callback(cur,uid,chat_id,data)
         elif data=="filter:list":
             cur.execute("SELECT id,name,basic FROM filters WHERE telegram_user_id=%s AND deleted_at IS NULL ORDER BY created_at",(uid,)); rows=cur.fetchall()
