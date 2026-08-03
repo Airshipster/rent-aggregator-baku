@@ -50,6 +50,13 @@ UI["ru"].update({
     "district_nasimi":"Насиминский", "district_nizami":"Низаминский", "district_narimanov":"Наримановский",
     "district_yasamal":"Ясамальский", "district_sabail":"Сабаильский", "district_khatai":"Хатаинский",
     "district_binagadi":"Бинагадинский", "district_surakhani":"Сураханский", "district_sabunchu":"Сабунчинский",
+    "access_add":"Добавить пользователя", "access_block":"Заблокировать", "access_rules":"Список правил",
+    "choose_identifier_add":"Выберите идентификатор для добавления", "choose_identifier_block":"Выберите идентификатор для блокировки", "phone":"Телефон",
+    "access_updated":"Доступ обновлён", "access_added":"добавлен", "access_blocked":"заблокирован",
+    "rule_later":"Правило применится, когда пользователь идентифицируется в боте.", "recognize_failed":"Не удалось распознать значение", "try_again":"Попробуйте ещё раз.",
+    "request_title":"Новая заявка на доступ", "name":"Имя", "not_set":"Не указано", "approve":"Одобрить", "reject":"Отклонить",
+    "send_identifier":"Отправьте ID, username или телефон одним сообщением.", "send_block_identifier":"Отправьте значение, которое нужно заблокировать.",
+    "rules_title":"Правила доступа", "rules_empty":"Правил пока нет.", "allowed":"разрешён", "blocked":"заблокирован",
 })
 UI["az"].update({
     "area_any":"Fərqi yoxdur", "done":"Hazırdır", "seller":"Elanı kim yerləşdirib", "repair":"Təmir",
@@ -63,6 +70,13 @@ UI["az"].update({
     "district_nasimi":"Nəsimi", "district_nizami":"Nizami", "district_narimanov":"Nərimanov",
     "district_yasamal":"Yasamal", "district_sabail":"Səbail", "district_khatai":"Xətai",
     "district_binagadi":"Binəqədi", "district_surakhani":"Suraxanı", "district_sabunchu":"Sabunçu",
+    "access_add":"İstifadəçi əlavə et", "access_block":"Blokla", "access_rules":"Qaydaların siyahısı",
+    "choose_identifier_add":"Əlavə etmək üçün identifikatoru seçin", "choose_identifier_block":"Bloklamaq üçün identifikatoru seçin", "phone":"Telefon",
+    "access_updated":"Giriş yeniləndi", "access_added":"əlavə edildi", "access_blocked":"bloklandı",
+    "rule_later":"Qayda istifadəçi botda identifikasiya olunduqda tətbiq ediləcək.", "recognize_failed":"Dəyəri tanımaq mümkün olmadı", "try_again":"Yenidən cəhd edin.",
+    "request_title":"Yeni giriş müraciəti", "name":"Ad", "not_set":"Göstərilməyib", "approve":"Təsdiqlə", "reject":"Rədd et",
+    "send_identifier":"ID, username və ya telefonu bir mesajla göndərin.", "send_block_identifier":"Bloklanacaq dəyəri göndərin.",
+    "rules_title":"Giriş qaydaları", "rules_empty":"Hələ qayda yoxdur.", "allowed":"icazə verilib", "blocked":"bloklanıb",
 })
 UI["en"].update({
     "area_any":"Any", "done":"Done", "seller":"Posted by", "repair":"Renovation",
@@ -76,6 +90,13 @@ UI["en"].update({
     "district_nasimi":"Nasimi", "district_nizami":"Nizami", "district_narimanov":"Narimanov",
     "district_yasamal":"Yasamal", "district_sabail":"Sabail", "district_khatai":"Khatai",
     "district_binagadi":"Binagadi", "district_surakhani":"Surakhani", "district_sabunchu":"Sabunchu",
+    "access_add":"Add user", "access_block":"Block", "access_rules":"Rules list",
+    "choose_identifier_add":"Choose an identifier to add", "choose_identifier_block":"Choose an identifier to block", "phone":"Phone",
+    "access_updated":"Access updated", "access_added":"added", "access_blocked":"blocked",
+    "rule_later":"The rule will apply when the user identifies themselves in the bot.", "recognize_failed":"Could not recognize the value", "try_again":"Try again.",
+    "request_title":"New access request", "name":"Name", "not_set":"Not specified", "approve":"Approve", "reject":"Reject",
+    "send_identifier":"Send the ID, username, or phone number in one message.", "send_block_identifier":"Send the value to block.",
+    "rules_title":"Access rules", "rules_empty":"No rules yet.", "allowed":"allowed", "blocked":"blocked",
 })
 
 
@@ -240,18 +261,20 @@ def _settings(cur, uid: int, chat_id: int, admin: bool) -> None:
 
 
 def _access_screen(cur, uid: int, chat_id: int) -> None:
-    _screen(cur,uid,chat_id,"<b>Управление доступом</b>",[
-        [("Добавить пользователя","access:add"),("Заблокировать","access:block")],
-        [("Список правил","access:list")],[("Назад","settings")]
+    language=_user_language(cur,uid)
+    _screen(cur,uid,chat_id,f"<b>{_l(language,'access')}</b>",[
+        [(_l(language,"access_add"),"access:add"),(_l(language,"access_block"),"access:block")],
+        [(_l(language,"access_rules"),"access:list")],[(_l(language,"back"),"settings")]
     ])
 
 
 def _identifier_type_screen(cur,uid:int,chat_id:int,decision:str)->None:
-    action="добавления" if decision=="approved" else "блокировки"
-    _screen(cur,uid,chat_id,f"Выберите идентификатор для {action}",[
+    language=_user_language(cur,uid)
+    prompt=_l(language,"choose_identifier_add" if decision=="approved" else "choose_identifier_block")
+    _screen(cur,uid,chat_id,prompt,[
         [("Telegram ID",f"access:{decision}:telegram_id")],
         [("Username",f"access:{decision}:username")],
-        [("Телефон",f"access:{decision}:phone")],[("Назад","settings:access")]
+        [(_l(language,"phone"),f"access:{decision}:phone")],[(_l(language,"back"),"settings:access")]
     ])
 
 
@@ -391,14 +414,15 @@ def handle_update(update: dict[str, Any]) -> dict[str, bool]:
                 pass
         cur.execute("SELECT wizard FROM users WHERE telegram_user_id=%s",(uid,)); wizard=(cur.fetchone() or {}).get("wizard") or {}
         if text and uid==admin_id and wizard.get("await")=="access_identifier" and not text.startswith("/"):
+            language=profile["language"]
             try:
                 display,linked=_store_access_decision(cur,uid,wizard["kind"],text,wizard["decision"])
                 cur.execute("UPDATE users SET wizard='{}'::jsonb WHERE telegram_user_id=%s",(uid,))
-                result="добавлен" if wizard["decision"]=="approved" else "заблокирован"
-                suffix=f"\nTelegram ID: <code>{linked}</code>" if linked else "\nПравило применится, когда пользователь идентифицируется в боте."
-                _screen(cur,uid,chat_id,f"<b>Доступ обновлён</b>\n{display}: {result}.{suffix}",[[('Назад','settings:access')]])
-            except ValueError as exc:
-                _screen(cur,uid,chat_id,f"<b>Не удалось распознать значение</b>\n{exc}\nПопробуйте ещё раз.",[[('Отмена','settings:access')]])
+                result=_l(language,"access_added" if wizard["decision"]=="approved" else "access_blocked")
+                suffix=f"\nTelegram ID: <code>{linked}</code>" if linked else "\n"+_l(language,"rule_later")
+                _screen(cur,uid,chat_id,f"<b>{_l(language,'access_updated')}</b>\n{display}: {result}.{suffix}",[[(_l(language,'back'),'settings:access')]])
+            except ValueError:
+                _screen(cur,uid,chat_id,f"<b>{_l(language,'recognize_failed')}</b>\n{_l(language,'try_again')}",[[(_l(language,'cancel'),'settings:access')]])
             return {"ok":True}
         if text.startswith("/start"):
             _apply_identifier_decision(cur,uid,user)
@@ -422,9 +446,10 @@ def handle_update(update: dict[str, Any]) -> dict[str, bool]:
         elif data=="apply":
             cur.execute("INSERT INTO user_access_audit(telegram_user_id,action) VALUES(%s,'application')",(uid,))
             _screen(cur,uid,chat_id,t(profile["language"],"sent"),[])
-            name=" ".join(x for x in [user.get("first_name"),user.get("last_name")] if x) or "Не указано"
-            username=f"@{user.get('username')}" if user.get("username") else "Не указан"
-            request=_tg("sendMessage",{"chat_id":admin_id,"text":f"<b>Новая заявка на доступ</b>\n\nID: <code>{uid}</code>\nUsername: {username}\nИмя: {name}","parse_mode":"HTML","reply_markup":_keyboard([[("Одобрить",f"approve:{uid}"),("Отклонить",f"reject:{uid}")]])})
+            admin_language=_user_language(cur,admin_id)
+            name=" ".join(x for x in [user.get("first_name"),user.get("last_name")] if x) or _l(admin_language,"not_set")
+            username=f"@{user.get('username')}" if user.get("username") else _l(admin_language,"not_set")
+            request=_tg("sendMessage",{"chat_id":admin_id,"text":f"<b>{_l(admin_language,'request_title')}</b>\n\nID: <code>{uid}</code>\nUsername: {username}\n{_l(admin_language,'name')}: {name}","parse_mode":"HTML","reply_markup":_keyboard([[(_l(admin_language,"approve"),f"approve:{uid}"),(_l(admin_language,"reject"),f"reject:{uid}")]])})
             cur.execute("""INSERT INTO bot_messages(chat_id,telegram_message_id,kind)
               VALUES(%s,%s,'access_request_admin') ON CONFLICT(chat_id,telegram_message_id) DO NOTHING""",(admin_id,request["message_id"]))
         elif data.startswith(("approve:","reject:")) and uid==admin_id:
@@ -441,26 +466,28 @@ def handle_update(update: dict[str, Any]) -> dict[str, bool]:
             language=profile["language"]
             _screen(cur,uid,chat_id,f"<b>{_l(language, 'payment')}</b>\n{_l(language, 'payment_off')}",[[(_l(language, 'back'),'settings')]])
         elif data=="settings:applications" and uid==admin_id:
+            language=profile["language"]
             cur.execute("SELECT telegram_user_id,first_name,last_name,username FROM users WHERE state='pending' ORDER BY created_at LIMIT 20")
             pending=cur.fetchall(); blocks=[]; rows=[]
             for x in pending:
-                target=x['telegram_user_id']; name=" ".join(v for v in [x['first_name'],x['last_name']] if v) or "Не указано"; username=f"@{x['username']}" if x['username'] else "Не указан"
-                blocks.append(f"ID: <code>{target}</code>\nUsername: {username}\nИмя: {name}")
-                rows.append([("Одобрить",f"approve:{target}"),("Отклонить",f"reject:{target}")])
-            rows.append([("Назад","settings")])
-            body="<b>Заявки на доступ</b>\n\n"+"\n\n".join(blocks) if pending else "Новых заявок нет."
+                target=x['telegram_user_id']; name=" ".join(v for v in [x['first_name'],x['last_name']] if v) or _l(language,"not_set"); username=f"@{x['username']}" if x['username'] else _l(language,"not_set")
+                blocks.append(f"ID: <code>{target}</code>\nUsername: {username}\n{_l(language,'name')}: {name}")
+                rows.append([(_l(language,"approve"),f"approve:{target}"),(_l(language,"reject"),f"reject:{target}")])
+            rows.append([(_l(language,"back"),"settings")])
+            body=f"<b>{_l(language,'requests')}</b>\n\n"+"\n\n".join(blocks) if pending else _l(language,"no_requests")
             _screen(cur,uid,chat_id,body,rows)
         elif data=="settings:access" and uid==admin_id: _access_screen(cur,uid,chat_id)
         elif data=="access:add" and uid==admin_id: _identifier_type_screen(cur,uid,chat_id,"approved")
         elif data=="access:block" and uid==admin_id: _identifier_type_screen(cur,uid,chat_id,"blocked")
         elif data.startswith("access:approved:") and uid==admin_id:
-            kind=data.rsplit(":",1)[1]; cur.execute("UPDATE users SET wizard=%s::jsonb WHERE telegram_user_id=%s",(json.dumps({"await":"access_identifier","decision":"approved","kind":kind}),uid)); _screen(cur,uid,chat_id,"Отправьте ID, username или телефон одним сообщением.",[[('Отмена','settings:access')]])
+            kind=data.rsplit(":",1)[1]; cur.execute("UPDATE users SET wizard=%s::jsonb WHERE telegram_user_id=%s",(json.dumps({"await":"access_identifier","decision":"approved","kind":kind}),uid)); _screen(cur,uid,chat_id,_l(profile["language"],"send_identifier"),[[(_l(profile["language"],"cancel"),'settings:access')]])
         elif data.startswith("access:blocked:") and uid==admin_id:
-            kind=data.rsplit(":",1)[1]; cur.execute("UPDATE users SET wizard=%s::jsonb WHERE telegram_user_id=%s",(json.dumps({"await":"access_identifier","decision":"blocked","kind":kind}),uid)); _screen(cur,uid,chat_id,"Отправьте значение, которое нужно заблокировать.",[[('Отмена','settings:access')]])
+            kind=data.rsplit(":",1)[1]; cur.execute("UPDATE users SET wizard=%s::jsonb WHERE telegram_user_id=%s",(json.dumps({"await":"access_identifier","decision":"blocked","kind":kind}),uid)); _screen(cur,uid,chat_id,_l(profile["language"],"send_block_identifier"),[[(_l(profile["language"],"cancel"),'settings:access')]])
         elif data=="access:list" and uid==admin_id:
             cur.execute("SELECT identifier_type,display_value,decision,linked_telegram_user_id FROM access_identifiers ORDER BY updated_at DESC LIMIT 30"); rules=cur.fetchall()
-            body="<b>Правила доступа</b>\n\n"+"\n".join(f"{x['display_value']} — {'разрешён' if x['decision']=='approved' else 'заблокирован'}"+(f" · <code>{x['linked_telegram_user_id']}</code>" if x['linked_telegram_user_id'] else "") for x in rules) if rules else "Правил пока нет."
-            _screen(cur,uid,chat_id,body,[[('Назад','settings:access')]])
+            language=profile["language"]
+            body=f"<b>{_l(language,'rules_title')}</b>\n\n"+"\n".join(f"{x['display_value']} — {_l(language,'allowed' if x['decision']=='approved' else 'blocked')}"+(f" · <code>{x['linked_telegram_user_id']}</code>" if x['linked_telegram_user_id'] else "") for x in rules) if rules else _l(language,"rules_empty")
+            _screen(cur,uid,chat_id,body,[[(_l(language,'back'),'settings:access')]])
         elif data=="filter:new":
             cur.execute("INSERT INTO filters(telegram_user_id,name) VALUES(%s,%s) RETURNING id",(uid,_l(profile["language"],"new_filter"))); _wizard(cur,uid,chat_id,str(cur.fetchone()["id"]),"deal")
         elif data.startswith("wf:"): _wizard_callback(cur,uid,chat_id,data)
