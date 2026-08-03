@@ -20,7 +20,7 @@ def format_private_rich(item: ListingDetail, image_urls: list[str], language: st
         for index, url in enumerate(image_urls)
     ]
     html = f"""
-    <h3>{escape(title(item, language))}</h3>
+    <p><b>{escape(title(item, language))}</b></p>
     <table bordered>{table_rows(item, language)}</table>
     <p>{label(language, "photos")}: {len(media)} / {len(item.image_urls)}</p>
     {photo_blocks(len(media))}

@@ -12,7 +12,7 @@ from .matching import matches
 from .locations import CITIES, CITY_BY_ID, city_label
 
 
-LANGUAGE_BUTTONS = [[("🇷🇺 Русский", "ru"), ("🇦🇿 Azərbaycanca", "az"), ("🇬🇧 English", "en")]]
+LANGUAGE_BUTTONS = [[("Русский", "ru"), ("Azərbaycanca", "az"), ("English", "en")]]
 CATEGORIES = {
     "new": ("Новостройка", "menziller/yeni-tikili"),
     "old": ("Вторичка", "menziller/kohne-tikili"),
@@ -77,6 +77,17 @@ UI["ru"].update({
     "seller":"Владелец / агентство", "documents":"Документы", "documents_question":"Документы и ипотека", "bill":"Есть купчая", "mortgage":"Подходит для ипотеки",
     "floor_min":"Этаж от", "floor_max":"Этаж до", "total_floors_min":"Этажей в здании от", "total_floors_max":"Этажей в здании до",
     "office_type":"Где находится офис?", "business_center":"Бизнес-центр", "home_apartment":"Дом / квартира", "villa":"Вилла",
+    "price_min_prompt":"Выберите минимальную стоимость, AZN", "price_max_prompt":"Выберите максимальную стоимость, AZN",
+    "area_min_prompt":"Выберите минимальную площадь, м²", "area_max_prompt":"Выберите максимальную площадь, м²",
+    "land_area_min_prompt":"Выберите минимальную площадь участка, соток", "land_area_max_prompt":"Выберите максимальную площадь участка, соток",
+    "rooms_min_prompt":"Выберите минимальное количество комнат", "rooms_max_prompt":"Выберите максимальное количество комнат",
+    "manual_input":"Ввести вручную", "send_number":"Введите число одним сообщением.", "invalid_number":"Не удалось распознать число. Введите положительное число.",
+    "district_prompt":"Выберите один или несколько районов", "confirm_choice":"Подтвердить выбор", "all_districts":"Все районы Баку",
+    "filter_details":"Параметры фильтра", "basic_conditions":"Основные условия", "edit_basic":"Изменить основные условия", "delete_filter":"Удалить фильтр",
+    "delete_filter_confirm":"Удалить этот фильтр?", "filter_deleted":"Фильтр удалён", "enable_filter":"Включить фильтр", "disable_filter":"Выключить фильтр",
+    "deal_label":"Сделка", "period_label":"Срок", "category_label":"Объект", "city_label":"Город", "district_label":"Районы",
+    "price_label":"Стоимость", "rooms_label":"Комнаты", "area_label":"Площадь", "floor_label":"Этаж", "not_limited":"без ограничений",
+    "building_floors":"Этажность здания", "building_floors_question":"Количество этажей в здании", "minimum":"Минимум", "maximum":"Максимум",
 })
 UI["az"].update({
     "area_any":"Fərqi yoxdur", "done":"Hazırdır", "seller":"Elanı kim yerləşdirib", "repair":"Təmir",
@@ -107,6 +118,17 @@ UI["az"].update({
     "seller":"Mülkiyyətçi / agentlik", "documents":"Sənədlər", "documents_question":"Sənədlər və ipoteka", "bill":"Çıxarış var", "mortgage":"İpotekaya yararlıdır",
     "floor_min":"Minimum mərtəbə", "floor_max":"Maksimum mərtəbə", "total_floors_min":"Binada minimum mərtəbə", "total_floors_max":"Binada maksimum mərtəbə",
     "office_type":"Ofis harada yerləşir?", "business_center":"Biznes mərkəzi", "home_apartment":"Ev / mənzil", "villa":"Villa",
+    "price_min_prompt":"Minimum qiyməti seçin, AZN", "price_max_prompt":"Maksimum qiyməti seçin, AZN",
+    "area_min_prompt":"Minimum sahəni seçin, m²", "area_max_prompt":"Maksimum sahəni seçin, m²",
+    "land_area_min_prompt":"Torpaq sahəsinin minimumunu seçin, sot", "land_area_max_prompt":"Torpaq sahəsinin maksimumunu seçin, sot",
+    "rooms_min_prompt":"Minimum otaq sayını seçin", "rooms_max_prompt":"Maksimum otaq sayını seçin",
+    "manual_input":"Əl ilə daxil et", "send_number":"Rəqəmi bir mesajla göndərin.", "invalid_number":"Rəqəmi tanımaq mümkün olmadı. Müsbət rəqəm daxil edin.",
+    "district_prompt":"Bir və ya bir neçə rayon seçin", "confirm_choice":"Seçimi təsdiqlə", "all_districts":"Bütün Bakı rayonları",
+    "filter_details":"Filtr parametrləri", "basic_conditions":"Əsas şərtlər", "edit_basic":"Əsas şərtləri dəyiş", "delete_filter":"Filtri sil",
+    "delete_filter_confirm":"Bu filtr silinsin?", "filter_deleted":"Filtr silindi", "enable_filter":"Filtri aktiv et", "disable_filter":"Filtri söndür",
+    "deal_label":"Əməliyyat", "period_label":"Müddət", "category_label":"Əmlak", "city_label":"Şəhər", "district_label":"Rayonlar",
+    "price_label":"Qiymət", "rooms_label":"Otaqlar", "area_label":"Sahə", "floor_label":"Mərtəbə", "not_limited":"məhdudiyyət yoxdur",
+    "building_floors":"Binanın mərtəbə sayı", "building_floors_question":"Binada mərtəbə sayı", "minimum":"Minimum", "maximum":"Maksimum",
 })
 UI["en"].update({
     "area_any":"Any", "done":"Done", "seller":"Posted by", "repair":"Renovation",
@@ -137,6 +159,17 @@ UI["en"].update({
     "seller":"Owner / agency", "documents":"Documents", "documents_question":"Documents and mortgage", "bill":"Title deed available", "mortgage":"Mortgage eligible",
     "floor_min":"Floor from", "floor_max":"Floor to", "total_floors_min":"Building floors from", "total_floors_max":"Building floors to",
     "office_type":"Where is the office located?", "business_center":"Business center", "home_apartment":"House / apartment", "villa":"Villa",
+    "price_min_prompt":"Choose the minimum price, AZN", "price_max_prompt":"Choose the maximum price, AZN",
+    "area_min_prompt":"Choose the minimum area, m²", "area_max_prompt":"Choose the maximum area, m²",
+    "land_area_min_prompt":"Choose the minimum land area, sot", "land_area_max_prompt":"Choose the maximum land area, sot",
+    "rooms_min_prompt":"Choose the minimum number of rooms", "rooms_max_prompt":"Choose the maximum number of rooms",
+    "manual_input":"Enter manually", "send_number":"Send a number in one message.", "invalid_number":"Could not recognize the number. Enter a positive number.",
+    "district_prompt":"Select one or more districts", "confirm_choice":"Confirm selection", "all_districts":"All Baku districts",
+    "filter_details":"Filter settings", "basic_conditions":"Basic conditions", "edit_basic":"Edit basic conditions", "delete_filter":"Delete filter",
+    "delete_filter_confirm":"Delete this filter?", "filter_deleted":"Filter deleted", "enable_filter":"Enable filter", "disable_filter":"Disable filter",
+    "deal_label":"Deal", "period_label":"Period", "category_label":"Property", "city_label":"City", "district_label":"Districts",
+    "price_label":"Price", "rooms_label":"Rooms", "area_label":"Area", "floor_label":"Floor", "not_limited":"no limits",
+    "building_floors":"Building floors", "building_floors_question":"Number of floors in the building", "minimum":"Minimum", "maximum":"Maximum",
 })
 
 
@@ -472,6 +505,138 @@ def _set_basic(cur, filter_id: str, uid: int, key: str, value: Any) -> bool:
     return True
 
 
+def _get_filter(cur, filter_id: str, uid: int) -> dict[str, Any] | None:
+    cur.execute(
+        "SELECT id,name,is_enabled,basic,additional FROM filters WHERE id=%s AND telegram_user_id=%s AND deleted_at IS NULL",
+        (filter_id, uid),
+    )
+    return cur.fetchone()
+
+
+def _range_text(language: str, minimum: Any, maximum: Any, unit: str = "") -> str:
+    if minimum is None and maximum is None:
+        return _l(language, "not_limited")
+    suffix = f" {unit}" if unit else ""
+    if minimum is not None and maximum is not None:
+        return f"{minimum:g}–{maximum:g}{suffix}"
+    if minimum is not None:
+        return f"{_l(language, 'minimum')}: {minimum:g}{suffix}"
+    return f"{_l(language, 'maximum')}: {maximum:g}{suffix}"
+
+
+def _filter_display_name(language: str, rule: dict[str, Any]) -> str:
+    basic = rule.get("basic") or {}
+    deal = (basic.get("deal_type") or [None])[0]
+    category_key = basic.get("category_key")
+    if not category_key:
+        slug = (basic.get("category_slug") or [""])[0]
+        category_key = next((key for key, (_label, value) in CATEGORIES.items() if value == slug), None)
+    parts = [_l(language, value) for value in (deal, category_key) if value]
+    rooms = _range_text(language, basic.get("rooms_min"), basic.get("rooms_max"))
+    if rooms != _l(language, "not_limited"):
+        parts.append(f"{rooms} {_l(language, 'rooms_label').lower()}")
+    return " · ".join(parts) or rule.get("name") or _l(language, "new_filter")
+
+
+def _filter_summary(language: str, rule: dict[str, Any]) -> str:
+    basic = rule.get("basic") or {}
+    deal = (basic.get("deal_type") or [None])[0]
+    period = (basic.get("rent_period") or [None])[0]
+    category_key = basic.get("category_key")
+    if not category_key:
+        slug = (basic.get("category_slug") or [""])[0]
+        category_key = next((key for key, (_label, value) in CATEGORIES.items() if value == slug), None)
+    city = (basic.get("city") or ["Bakı"])[0]
+    city_id = next((identifier for identifier, name in CITIES if name == city), 1)
+    districts = basic.get("district") or []
+    reverse_districts = {value: key for key, (_label, value) in DISTRICTS.items() if value}
+    district_text = ", ".join(
+        DISTRICT_LABELS.get(language, {}).get(reverse_districts.get(value, ""), value)
+        for value in districts
+    ) or _l(language, "all_districts")
+    area_prefix = "land_area_m2" if category_key == "land" else "area_m2"
+    lines = [f"<b>{escape(_filter_display_name(language, rule))}</b>"]
+    lines.append(f"{_l(language, 'deal_label')}: {_l(language, deal) if deal else '—'}")
+    if period:
+        lines.append(f"{_l(language, 'period_label')}: {_l(language, period)}")
+    lines.append(f"{_l(language, 'category_label')}: {_l(language, category_key) if category_key else '—'}")
+    lines.append(f"{_l(language, 'city_label')}: {escape(city_label(city_id, language))}")
+    if city == "Bakı":
+        lines.append(f"{_l(language, 'district_label')}: {escape(district_text)}")
+    lines.append(f"{_l(language, 'price_label')}: {_range_text(language, basic.get('price_min'), basic.get('price_max'), 'AZN')}")
+    if category_key in {"new", "old", "office", "house"}:
+        lines.append(f"{_l(language, 'rooms_label')}: {_range_text(language, basic.get('rooms_min'), basic.get('rooms_max'))}")
+    lines.append(f"{_l(language, 'area_label')}: {_range_text(language, basic.get(area_prefix + '_min'), basic.get(area_prefix + '_max'), 'm²')}")
+    if category_key in {"new", "old"}:
+        lines.append(f"{_l(language, 'floor_label')}: {_range_text(language, basic.get('floor_min'), basic.get('floor_max'))}")
+        lines.append(f"{_l(language, 'building_floors')}: {_range_text(language, basic.get('total_floors_min'), basic.get('total_floors_max'))}")
+    return "\n".join(lines)
+
+
+def _filter_details(cur, uid: int, chat_id: int, filter_id: str) -> None:
+    language = _user_language(cur, uid)
+    rule = _get_filter(cur, filter_id, uid)
+    if not rule:
+        _filter_list(cur, uid, chat_id)
+        return
+    toggle = _l(language, "disable_filter" if rule["is_enabled"] else "enable_filter")
+    rows = [
+        [(_l(language, "edit_basic"), f"filter:edit:{filter_id}")],
+        [(_l(language, "additional"), f"additional:{filter_id}")],
+        [(toggle, f"filter:toggle:{filter_id}")],
+        [(_l(language, "delete_filter"), f"filter:delete:{filter_id}")],
+        [(_l(language, "back"), "filter:list")],
+    ]
+    _screen(cur, uid, chat_id, _filter_summary(language, rule), rows)
+
+
+def _filter_list(cur, uid: int, chat_id: int) -> None:
+    language = _user_language(cur, uid)
+    cur.execute("SELECT id,name,is_enabled,basic,additional FROM filters WHERE telegram_user_id=%s AND deleted_at IS NULL ORDER BY created_at", (uid,))
+    filters = cur.fetchall()
+    buttons = [[(("✅ " if row["is_enabled"] else "⏸️ ") + _filter_display_name(language, row), f"filter:view:{row['id']}")] for row in filters]
+    buttons.append([(_l(language, "back"), "main")])
+    _screen(cur, uid, chat_id, f"<b>{_l(language,'filters')}</b>" if filters else _l(language, "no_filters"), buttons)
+
+
+def _number_rows(language: str, filter_id: str, field: str, values: list[str], allow_any: bool = True) -> list[list[tuple[str, str]]]:
+    rows: list[list[tuple[str, str]]] = []
+    if allow_any:
+        rows.append([(_l(language, "any"), f"num:{filter_id}:{field}:any")])
+    rows.extend([[(value, f"num:{filter_id}:{field}:{value}") for value in values[index:index + 3]] for index in range(0, len(values), 3)])
+    rows.append([(_l(language, "manual_input"), f"manual:{filter_id}:{field}")])
+    return rows
+
+
+def _numeric_prompt(cur, uid: int, chat_id: int, filter_id: str, field: str) -> None:
+    language = _user_language(cur, uid)
+    prompts = {
+        "price_min": "price_min_prompt", "price_max": "price_max_prompt",
+        "rooms_min": "rooms_min_prompt", "rooms_max": "rooms_max_prompt",
+        "area_m2_min": "area_min_prompt", "area_m2_max": "area_max_prompt",
+        "land_area_m2_min": "land_area_min_prompt", "land_area_m2_max": "land_area_max_prompt",
+        "floor_min": "floor_min", "floor_max": "floor_max",
+        "total_floors_min": "floor_min", "total_floors_max": "floor_max",
+    }
+    cur.execute("SELECT basic FROM filters WHERE id=%s AND telegram_user_id=%s", (filter_id, uid))
+    basic = (cur.fetchone() or {}).get("basic") or {}
+    sale = basic.get("deal_type") == ["sale"]
+    daily = basic.get("rent_period") == ["daily"]
+    if field.startswith("price"):
+        values = (["50000", "100000", "150000", "250000", "500000"] if sale else ["30", "50", "80", "100", "150", "250"] if daily else ["300", "500", "800", "1000", "1500", "2500"])
+    elif field.startswith("rooms"):
+        values = ["1", "2", "3", "4", "5", "7", "10"]
+    elif field.startswith("land_area"):
+        values = ["1", "3", "5", "10", "20", "50", "100"]
+    elif field.startswith("area"):
+        values = ["30", "50", "70", "100", "150", "300", "500"]
+    else:
+        values = ["1", "2", "3", "5", "10", "15", "20", "30"]
+    rows = _number_rows(language, filter_id, field, values)
+    rows.append([(_l(language, "back"), f"nprev:{filter_id}:{field}")])
+    _screen(cur, uid, chat_id, f"<b>{_l(language, prompts[field])}</b>", rows)
+
+
 def _enqueue_today(cur, uid: int, filter_id: str) -> int:
     cur.execute("SELECT basic,additional FROM filters WHERE id=%s AND telegram_user_id=%s AND deleted_at IS NULL",(filter_id,uid)); rule=cur.fetchone()
     if not rule: return 0
@@ -491,9 +656,8 @@ def _enqueue_today(cur, uid: int, filter_id: str) -> int:
 
 
 def _wizard(cur, uid: int, chat_id: int, filter_id: str, step: str, context: dict[str, Any] | None = None) -> None:
-    context = context or {}
     language = _user_language(cur, uid)
-    back = [(_l(language, "cancel"), f"filter:cancel:{filter_id}")]
+    back = [(_l(language, "back"), f"wb:{filter_id}:{step}")]
     if step == "deal":
         _screen(cur, uid, chat_id, f"<b>{_l(language, 'deal')}</b>", [[(_l(language, "rent"), f"wf:{filter_id}:deal:rent")], [(_l(language, "sale"), f"wf:{filter_id}:deal:sale")], back])
     elif step == "period":
@@ -509,82 +673,163 @@ def _wizard(cur, uid: int, chat_id: int, filter_id: str, step: str, context: dic
         values=[(_l(language,"business_center"),"business"),(_l(language,"home_apartment"),"home"),(_l(language,"villa"),"villa")]
         _screen(cur,uid,chat_id,f"<b>{_l(language,'office_type')}</b>",[[ (a,f"wf:{filter_id}:office_type:{b}") ] for a,b in values]+[back])
     elif step == "price_min":
-        cur.execute("SELECT basic FROM filters WHERE id=%s",(filter_id,)); basic=cur.fetchone()["basic"]
-        values = [(_l(language,"no_min"),"any")]+([("50 000","50000"),("100 000","100000"),("150 000","150000"),("250 000","250000"),("500 000","500000")] if basic.get("deal_type")==["sale"] else [("30","30"),("50","50"),("80","80"),("100","100"),("150","150")] if basic.get("rent_period")==["daily"] else [("300","300"),("500","500"),("800","800"),("1000","1000"),("1500","1500")])
-        _screen(cur, uid, chat_id, f"<b>{_l(language, 'pmin')}</b>", [[(a, f"wf:{filter_id}:pmin:{b}") for a,b in values[:3]], [(a, f"wf:{filter_id}:pmin:{b}") for a,b in values[3:]], back])
+        _numeric_prompt(cur, uid, chat_id, filter_id, "price_min")
     elif step == "price_max":
-        cur.execute("SELECT basic FROM filters WHERE id=%s",(filter_id,)); basic=cur.fetchone()["basic"]
-        values = [(_l(language,"no_max"),"any")]+([("100 000","100000"),("150 000","150000"),("250 000","250000"),("500 000","500000"),("1 000 000","1000000")] if basic.get("deal_type")==["sale"] else [("50","50"),("80","80"),("100","100"),("150","150"),("250","250"),("500","500")] if basic.get("rent_period")==["daily"] else [("500","500"),("800","800"),("1000","1000"),("1500","1500"),("2500","2500"),("5000","5000")])
-        _screen(cur, uid, chat_id, f"<b>{_l(language, 'pmax')}</b>", [[(a, f"wf:{filter_id}:pmax:{b}") for a,b in values[:4]], [(a, f"wf:{filter_id}:pmax:{b}") for a,b in values[4:]], back])
-    elif step == "rooms":
-        values = [(_l(language, "any"), "any"), ("1", "1"), ("2", "2"), ("3", "3"), ("4+", "4")]
-        _screen(cur, uid, chat_id, f"<b>{_l(language, 'rooms')}</b>", [[(a, f"wf:{filter_id}:rooms:{b}") for a,b in values], back])
+        _numeric_prompt(cur, uid, chat_id, filter_id, "price_max")
+    elif step == "rooms_min":
+        _numeric_prompt(cur, uid, chat_id, filter_id, "rooms_min")
+    elif step == "rooms_max":
+        _numeric_prompt(cur, uid, chat_id, filter_id, "rooms_max")
     elif step == "area_min":
         cur.execute("SELECT basic FROM filters WHERE id=%s", (filter_id,)); basic = cur.fetchone()["basic"]
-        land = basic.get("category_key") == "land"
-        values = [(_l(language,"area_any"),"any")]+([("1","1"),("3","3"),("5","5"),("10","10"),("20","20"),("50","50")] if land else [("30","30"),("50","50"),("70","70"),("100","100"),("200","200")])
-        _screen(cur, uid, chat_id, f"<b>{_l(language, 'land_min' if land else 'amin')}</b>", [[(a, f"wf:{filter_id}:amin:{b}") for a,b in values[:3]], [(a, f"wf:{filter_id}:amin:{b}") for a,b in values[3:]], back])
+        _numeric_prompt(cur, uid, chat_id, filter_id, "land_area_m2_min" if basic.get("category_key") == "land" else "area_m2_min")
     elif step == "area_max":
         cur.execute("SELECT basic FROM filters WHERE id=%s", (filter_id,)); basic = cur.fetchone()["basic"]
-        land = basic.get("category_key") == "land"
-        values = [(_l(language,"area_any"),"any")]+([("3","3"),("5","5"),("10","10"),("20","20"),("50","50"),("100","100")] if land else [("50","50"),("70","70"),("100","100"),("150","150"),("300","300"),("500","500")])
-        _screen(cur, uid, chat_id, f"<b>{_l(language, 'land_max' if land else 'amax')}</b>", [[(a, f"wf:{filter_id}:amax:{b}") for a,b in values[:4]], [(a, f"wf:{filter_id}:amax:{b}") for a,b in values[4:]], back])
-    elif step in {"floor_min", "floor_max", "total_floors_min", "total_floors_max"}:
-        values=[(_l(language,"any"),"any"),("1","1"),("2","2"),("3","3"),("5","5"),("10","10"),("15","15"),("20","20"),("30","30")]
-        rows=[[(a,f"wf:{filter_id}:{step}:{b}") for a,b in values[:5]],[(a,f"wf:{filter_id}:{step}:{b}") for a,b in values[5:]],back]
-        _screen(cur,uid,chat_id,f"<b>{_l(language,step)}</b>",rows)
+        _numeric_prompt(cur, uid, chat_id, filter_id, "land_area_m2_max" if basic.get("category_key") == "land" else "area_m2_max")
+    elif step in {"floor_min", "floor_max"}:
+        _numeric_prompt(cur, uid, chat_id, filter_id, step)
     elif step == "district":
-        rows = [[(_l(language, "all_baku") if key == "any" else DISTRICT_LABELS.get(language,{}).get(key,label), f"wf:{filter_id}:district:{key}")] for key, (label, _value) in DISTRICTS.items()]
-        rows.append(back)
-        _screen(cur, uid, chat_id, f"<b>{_l(language, 'district')}</b>", rows)
+        _district_screen(cur, uid, chat_id, filter_id)
     elif step == "done":
         cur.execute("SELECT basic FROM filters WHERE id=%s", (filter_id,)); basic = cur.fetchone()["basic"]
         rows = [[(_l(language, "seller"), f"ad:{filter_id}:seller")], [(_l(language, "repair"), f"ad:{filter_id}:repair")]]
         if basic.get("deal_type") == ["sale"]:
             rows.append([(_l(language, "documents"), f"ad:{filter_id}:documents")])
-        rows.extend([[(_l(language, "activate"), f"filter:activate:{filter_id}")], [(_l(language, "cancel"), f"filter:cancel:{filter_id}")]])
+        if basic.get("category_key") in {"new", "old"}:
+            rows.append([(_l(language, "building_floors"), f"ad:{filter_id}:building_floors")])
+        rows.extend([[(_l(language, "activate"), f"filter:activate:{filter_id}")], back])
         _screen(cur, uid, chat_id, f"<b>{_l(language, 'filter_ready')}</b>\n\n{_l(language, 'additional_warning')}", rows)
 
 
 def _wizard_callback(cur, uid: int, chat_id: int, data: str) -> None:
     _, filter_id, step, value = data.split(":", 3)
     if step == "deal":
-        _set_basic(cur, filter_id, uid, "deal_type", [value]); _wizard(cur, uid, chat_id, filter_id, "period" if value == "rent" else "category")
+        cur.execute("SELECT basic FROM filters WHERE id=%s AND telegram_user_id=%s", (filter_id, uid))
+        previous = (cur.fetchone() or {}).get("basic") or {}
+        basic = {"city": previous.get("city") or ["Bakı"], "deal_type": [value]}
+        if previous.get("district"):
+            basic["district"] = previous["district"]
+        cur.execute("UPDATE filters SET basic=%s::jsonb,updated_at=now() WHERE id=%s", (json.dumps(basic), filter_id))
+        _wizard(cur, uid, chat_id, filter_id, "period" if value == "rent" else "category")
     elif step == "period":
         _set_basic(cur, filter_id, uid, "rent_period", [value]); _wizard(cur, uid, chat_id, filter_id, "category")
     elif step == "category":
+        for stale in ("building_type", "rooms_min", "rooms_max", "floor_min", "floor_max", "total_floors_min", "total_floors_max"):
+            _set_basic(cur, filter_id, uid, stale, None)
         _set_basic(cur, filter_id, uid, "category_slug", [CATEGORIES[value][1]]); _set_basic(cur, filter_id, uid, "category_key", value); _wizard(cur, uid, chat_id, filter_id, "office_type" if value=="office" else "price_min")
     elif step == "office_type":
         source={"business":"Biznes mərkəzi","home":"Ev / Mənzil","villa":"Villa"}[value]
         _set_basic(cur,filter_id,uid,"building_type",[source]); _wizard(cur,uid,chat_id,filter_id,"price_min")
-    elif step == "pmin":
-        _set_basic(cur, filter_id, uid, "price_min", None if value == "any" else int(value)); _wizard(cur, uid, chat_id, filter_id, "price_max")
-    elif step == "pmax":
-        _set_basic(cur, filter_id, uid, "price_max", None if value == "any" else int(value))
-        cur.execute("SELECT basic FROM filters WHERE id=%s",(filter_id,)); basic=cur.fetchone()["basic"]
-        _wizard(cur, uid, chat_id, filter_id, "rooms" if basic.get("category_key") in ("new","old","office") else "area_min")
-    elif step == "rooms":
-        _set_basic(cur, filter_id, uid, "rooms_min", None if value == "any" else int(value)); _wizard(cur, uid, chat_id, filter_id, "area_min")
-    elif step == "amin":
-        cur.execute("SELECT basic FROM filters WHERE id=%s",(filter_id,)); basic=cur.fetchone()["basic"]
-        key="land_area_m2_min" if basic.get("category_key")=="land" else "area_m2_min"
-        _set_basic(cur, filter_id, uid, key, None if value == "any" else int(value)); _wizard(cur, uid, chat_id, filter_id, "area_max")
-    elif step == "amax":
-        cur.execute("SELECT basic FROM filters WHERE id=%s",(filter_id,)); basic=cur.fetchone()["basic"]
-        key="land_area_m2_max" if basic.get("category_key")=="land" else "area_m2_max"
-        _set_basic(cur, filter_id, uid, key, None if value == "any" else int(value))
-        cur.execute("SELECT basic FROM filters WHERE id=%s",(filter_id,)); basic=cur.fetchone()["basic"]
-        next_step="floor_min" if basic.get("category_key") in ("new","old") else "district" if basic.get("city")==["Bakı"] else "done"
-        _wizard(cur, uid, chat_id, filter_id, next_step)
-    elif step in {"floor_min","floor_max","total_floors_min","total_floors_max"}:
-        _set_basic(cur,filter_id,uid,step,None if value=="any" else int(value))
-        order={"floor_min":"floor_max","floor_max":"total_floors_min","total_floors_min":"total_floors_max"}
-        if step in order: _wizard(cur,uid,chat_id,filter_id,order[step])
+    elif step in {"pmin", "pmax", "rooms", "amin", "amax", "floor_min", "floor_max"}:
+        # Compatibility with callbacks created by the previous release.
+        field = {"pmin":"price_min", "pmax":"price_max", "rooms":"rooms_min", "amin":"area_m2_min", "amax":"area_m2_max"}.get(step, step)
+        _apply_number(cur, uid, chat_id, filter_id, field, value)
+
+
+def _number_next_step(cur, filter_id: str, field: str) -> str:
+    cur.execute("SELECT basic FROM filters WHERE id=%s", (filter_id,))
+    basic = (cur.fetchone() or {}).get("basic") or {}
+    category = basic.get("category_key")
+    city_is_baku = basic.get("city") == ["Bakı"]
+    mapping = {
+        "price_min": "price_max",
+        "rooms_min": "rooms_max",
+        "rooms_max": "area_min",
+        "area_m2_min": "area_max",
+        "land_area_m2_min": "area_max",
+        "floor_min": "floor_max",
+        "total_floors_min": "total_floors_max",
+    }
+    if field == "price_max":
+        return "rooms_min" if category in {"new", "old", "office", "house"} else "area_min"
+    if field in {"area_m2_max", "land_area_m2_max"}:
+        return "floor_min" if category in {"new", "old"} else "district" if city_is_baku else "done"
+    if field == "floor_max":
+        return "district" if city_is_baku else "done"
+    return mapping[field]
+
+
+def _apply_number(cur, uid: int, chat_id: int, filter_id: str, field: str, raw_value: str) -> None:
+    value = None if raw_value == "any" else float(raw_value.replace(" ", "").replace(",", "."))
+    if value is not None and value <= 0:
+        raise ValueError("number must be positive")
+    if field.startswith("rooms") or field.startswith("floor") or field.startswith("total_floors") or field.startswith("price"):
+        value = int(value) if value is not None else None
+    _set_basic(cur, filter_id, uid, field, value)
+    if field.startswith("total_floors"):
+        _building_floors_screen(cur, uid, chat_id, filter_id)
+        return
+    _wizard(cur, uid, chat_id, filter_id, _number_next_step(cur, filter_id, field))
+
+
+def _wizard_previous_step(cur, filter_id: str, step: str) -> str | None:
+    cur.execute("SELECT basic FROM filters WHERE id=%s", (filter_id,))
+    basic = (cur.fetchone() or {}).get("basic") or {}
+    category = basic.get("category_key")
+    if step == "deal": return None
+    if step == "period": return "deal"
+    if step == "category": return "period" if basic.get("deal_type") == ["rent"] else "deal"
+    if step == "office_type": return "category"
+    if step == "price_min": return "office_type" if category == "office" else "category"
+    if step == "price_max": return "price_min"
+    if step == "rooms_min": return "price_max"
+    if step == "rooms_max": return "rooms_min"
+    if step == "area_min": return "rooms_max" if category in {"new", "old", "office", "house"} else "price_max"
+    if step == "area_max": return "area_min"
+    if step == "floor_min": return "area_max"
+    if step == "floor_max": return "floor_min"
+    if step == "district": return "floor_max" if category in {"new", "old"} else "area_max"
+    if step == "done": return "district" if basic.get("city") == ["Bakı"] else "floor_max" if category in {"new", "old"} else "area_max"
+    return None
+
+
+def _district_screen(cur, uid: int, chat_id: int, filter_id: str) -> None:
+    language = _user_language(cur, uid)
+    cur.execute("SELECT basic FROM filters WHERE id=%s AND telegram_user_id=%s", (filter_id, uid))
+    selected = set(((cur.fetchone() or {}).get("basic") or {}).get("district") or [])
+    rows: list[list[tuple[str, str]]] = []
+    rows.append([((_choice_label(language, "all_districts", True) if not selected else _l(language, "all_districts")), f"dt:{filter_id}:any")])
+    for key, (label, value) in DISTRICTS.items():
+        if key == "any" or value is None:
+            continue
+        visible = DISTRICT_LABELS.get(language, {}).get(key, label)
+        text = visible if not selected else ("✅ " if value in selected else "❌ ") + visible
+        rows.append([(text, f"dt:{filter_id}:{key}")])
+    rows.append([(_l(language, "confirm_choice"), f"dc:{filter_id}")])
+    rows.append([(_l(language, "back"), f"wb:{filter_id}:district")])
+    _screen(cur, uid, chat_id, f"<b>{_l(language, 'district_prompt')}</b>", rows)
+
+
+def _toggle_district(cur, uid: int, filter_id: str, key: str) -> None:
+    cur.execute("SELECT basic FROM filters WHERE id=%s AND telegram_user_id=%s", (filter_id, uid))
+    basic = dict((cur.fetchone() or {}).get("basic") or {})
+    if key == "any":
+        basic.pop("district", None)
+    else:
+        selected = set(basic.get("district") or [])
+        value = DISTRICTS[key][1]
+        if value in selected:
+            selected.remove(value)
         else:
-            cur.execute("SELECT basic FROM filters WHERE id=%s",(filter_id,)); basic=cur.fetchone()["basic"]
-            _wizard(cur,uid,chat_id,filter_id,"district" if basic.get("city")==["Bakı"] else "done")
-    elif step == "district":
-        _set_basic(cur, filter_id, uid, "district", None if value == "any" else [DISTRICTS[value][1]]); _wizard(cur, uid, chat_id, filter_id, "done")
+            selected.add(value)
+        if selected:
+            basic["district"] = sorted(selected)
+        else:
+            basic.pop("district", None)
+    cur.execute("UPDATE filters SET basic=%s::jsonb,updated_at=now() WHERE id=%s", (json.dumps(basic), filter_id))
+
+
+def _building_floors_screen(cur, uid: int, chat_id: int, filter_id: str) -> None:
+    language = _user_language(cur, uid)
+    rule = _get_filter(cur, filter_id, uid)
+    basic = (rule or {}).get("basic") or {}
+    text = f"<b>{_l(language, 'building_floors_question')}</b>\n{_range_text(language, basic.get('total_floors_min'), basic.get('total_floors_max'))}"
+    rows = [
+        [(_l(language, "minimum"), f"bf:{filter_id}:total_floors_min")],
+        [(_l(language, "maximum"), f"bf:{filter_id}:total_floors_max")],
+        [(_l(language, "back"), f"additional:{filter_id}")],
+    ]
+    _screen(cur, uid, chat_id, text, rows)
 
 
 def _additional(cur, uid: int, chat_id: int, filter_id: str) -> None:
@@ -595,7 +840,9 @@ def _additional(cur, uid: int, chat_id: int, filter_id: str) -> None:
     rows = [[(_l(language, "seller"), f"ad:{filter_id}:seller")], [(_l(language, "repair"), f"ad:{filter_id}:repair")]]
     if basic.get("deal_type") == ["sale"]:
         rows.append([(_l(language, "documents"), f"ad:{filter_id}:documents")])
-    rows.extend([[(_l(language, "activate"), f"filter:activate:{filter_id}")], [(_l(language, "back"), "filter:list")]])
+    if basic.get("category_key") in {"new", "old"}:
+        rows.append([(_l(language, "building_floors"), f"ad:{filter_id}:building_floors")])
+    rows.extend([[(_l(language, "activate"), f"filter:activate:{filter_id}")], [(_l(language, "back"), f"filter:view:{filter_id}")]])
     _screen(cur, uid, chat_id, text, rows)
 
 
@@ -625,19 +872,31 @@ def _selected_additional(cur, filter_id: str, uid: int, field: str, all_values: 
 
 def _toggle_additional(cur, filter_id: str, uid: int, field: str, value: str, all_values: set[str]) -> None:
     current = _selected_additional(cur, filter_id, uid, field, all_values)
-    if value == "all":
+    next_values = _toggled_values(current, value, all_values)
+    if next_values is None:
         _set_additional(cur, filter_id, uid, field, None)
         return
-    if current == all_values:
-        current = {value}
-    elif value in current:
-        current.remove(value)
+    _set_additional(
+        cur,
+        filter_id,
+        uid,
+        field,
+        sorted(next_values - {"unknown"}),
+        include_unknown="unknown" in next_values,
+    )
+
+
+def _toggled_values(current: set[str], value: str, all_values: set[str]) -> set[str] | None:
+    if value == "all":
+        return None
+    next_values = set(current)
+    if next_values == all_values:
+        next_values.remove(value)
+    elif value in next_values:
+        next_values.remove(value)
     else:
-        current.add(value)
-    if not current or current == all_values:
-        _set_additional(cur, filter_id, uid, field, None)
-    else:
-        _set_additional(cur, filter_id, uid, field, sorted(current - {"unknown"}), include_unknown="unknown" in current)
+        next_values.add(value)
+    return None if next_values == all_values else next_values
 
 
 def _choice_label(language: str, key: str, selected: bool) -> str:
@@ -722,6 +981,21 @@ def handle_update(update: dict[str, Any]) -> dict[str, bool]:
                 _apply_identifier_decision(cur,uid,{**user,"phone_normalized":phone})
             except ValueError:
                 pass
+        if text and wizard.get("await") == "filter_number" and not text.startswith("/"):
+            language = profile["language"]
+            try:
+                raw = text.strip().replace(" ", "").replace(",", ".")
+                if not re.fullmatch(r"\d+(?:\.\d+)?", raw):
+                    raise ValueError("invalid number")
+                cur.execute("UPDATE users SET wizard='{}'::jsonb WHERE telegram_user_id=%s", (uid,))
+                _apply_number(cur, uid, chat_id, wizard["filter_id"], wizard["field"], raw)
+            except (ValueError, KeyError):
+                _screen(
+                    cur, uid, chat_id,
+                    f"<b>{_l(language, 'invalid_number')}</b>\n{_l(language, 'send_number')}",
+                    [[(_l(language, "back"), f"nb:{wizard.get('filter_id','')}:{wizard.get('field','')}")]],
+                )
+            return {"ok": True}
         if text and uid==admin_id and wizard.get("await")=="access_identifier" and not text.startswith("/"):
             language=profile["language"]
             try:
@@ -851,6 +1125,25 @@ def handle_update(update: dict[str, Any]) -> dict[str, bool]:
             filter_id=data.rsplit(":",1)[1]
             cur.execute("UPDATE filters SET deleted_at=now(),is_enabled=false WHERE id=%s AND telegram_user_id=%s AND is_enabled=false",(filter_id,uid))
             _main(cur,uid,chat_id,profile["language"])
+        elif data.startswith("filter:view:"):
+            _filter_details(cur, uid, chat_id, data.rsplit(":", 1)[1])
+        elif data.startswith("filter:edit:"):
+            _wizard(cur, uid, chat_id, data.rsplit(":", 1)[1], "deal")
+        elif data.startswith("filter:toggle:"):
+            filter_id = data.rsplit(":", 1)[1]
+            cur.execute("UPDATE filters SET is_enabled=NOT is_enabled,updated_at=now() WHERE id=%s AND telegram_user_id=%s AND deleted_at IS NULL RETURNING is_enabled", (filter_id, uid))
+            state = cur.fetchone()
+            if state and state["is_enabled"]:
+                _enqueue_today(cur, uid, filter_id)
+            _filter_details(cur, uid, chat_id, filter_id)
+        elif data.startswith("filter:delete:confirm:"):
+            filter_id = data.rsplit(":", 1)[1]
+            cur.execute("UPDATE filters SET deleted_at=now(),is_enabled=false,updated_at=now() WHERE id=%s AND telegram_user_id=%s", (filter_id, uid))
+            _filter_list(cur, uid, chat_id)
+        elif data.startswith("filter:delete:"):
+            filter_id = data.rsplit(":", 1)[1]
+            language = profile["language"]
+            _screen(cur, uid, chat_id, f"<b>{_l(language, 'delete_filter_confirm')}</b>", [[(_l(language, "delete_filter"), f"filter:delete:confirm:{filter_id}")], [(_l(language, "back"), f"filter:view:{filter_id}")]])
         elif data.startswith("filter:activate:"):
             filter_id=data.rsplit(":",1)[1]
             cur.execute("UPDATE filters SET is_enabled=true,updated_at=now() WHERE id=%s AND telegram_user_id=%s AND deleted_at IS NULL RETURNING id",(filter_id,uid))
@@ -860,20 +1153,64 @@ def handle_update(update: dict[str, Any]) -> dict[str, bool]:
             note=_l(language,"found",count=queued) if queued else _l(language,"none_today")
             _screen(cur,uid,chat_id,f"<b>{_l(language,'saved')}</b>\n{note}",[[(_l(language,"main"),"main")]])
         elif data.startswith("wf:"): _wizard_callback(cur,uid,chat_id,data)
+        elif data.startswith("num:"):
+            _, filter_id, field, value = data.split(":", 3)
+            _apply_number(cur, uid, chat_id, filter_id, field, value)
+        elif data.startswith("manual:"):
+            _, filter_id, field = data.split(":", 2)
+            cur.execute("UPDATE users SET wizard=%s::jsonb WHERE telegram_user_id=%s", (json.dumps({"await":"filter_number","filter_id":filter_id,"field":field}), uid))
+            language = profile["language"]
+            _screen(cur, uid, chat_id, f"<b>{_l(language, 'send_number')}</b>", [[(_l(language, "back"), f"nb:{filter_id}:{field}")]])
+        elif data.startswith("nb:"):
+            _, filter_id, field = data.split(":", 2)
+            cur.execute("UPDATE users SET wizard='{}'::jsonb WHERE telegram_user_id=%s", (uid,))
+            if field.startswith("total_floors"):
+                _building_floors_screen(cur, uid, chat_id, filter_id)
+            else:
+                _numeric_prompt(cur, uid, chat_id, filter_id, field)
+        elif data.startswith("nprev:"):
+            _, filter_id, field = data.split(":", 2)
+            if field.startswith("total_floors"):
+                _building_floors_screen(cur, uid, chat_id, filter_id)
+            else:
+                step = {
+                    "area_m2_min":"area_min", "land_area_m2_min":"area_min",
+                    "area_m2_max":"area_max", "land_area_m2_max":"area_max",
+                }.get(field, field)
+                previous = _wizard_previous_step(cur, filter_id, step)
+                if previous:
+                    _wizard(cur, uid, chat_id, filter_id, previous)
+                else:
+                    _filter_details(cur, uid, chat_id, filter_id)
+        elif data.startswith("wb:"):
+            _, filter_id, step = data.split(":", 2)
+            previous = _wizard_previous_step(cur, filter_id, step)
+            if previous:
+                _wizard(cur, uid, chat_id, filter_id, previous)
+            else:
+                _filter_details(cur, uid, chat_id, filter_id)
+        elif data.startswith("dt:"):
+            _, filter_id, key = data.split(":", 2)
+            _toggle_district(cur, uid, filter_id, key)
+            _district_screen(cur, uid, chat_id, filter_id)
+        elif data.startswith("dc:"):
+            _wizard(cur, uid, chat_id, data.split(":", 1)[1], "done")
         elif data=="filter:list":
-            cur.execute("SELECT id,name,basic FROM filters WHERE telegram_user_id=%s AND deleted_at IS NULL ORDER BY created_at",(uid,)); rows=cur.fetchall()
-            buttons=[[(row["name"],f"additional:{row['id']}")] for row in rows]; buttons.append([(_l(profile["language"],"back"),"main")])
-            _screen(cur,uid,chat_id,f"<b>{_l(profile['language'],'filters')}</b>" if rows else _l(profile["language"],"no_filters"),buttons)
+            _filter_list(cur, uid, chat_id)
         elif data=="additional:list":
-            cur.execute("SELECT id,name FROM filters WHERE telegram_user_id=%s AND deleted_at IS NULL ORDER BY created_at",(uid,)); rows=cur.fetchall()
-            buttons=[[(row["name"],f"additional:{row['id']}")] for row in rows]; buttons.append([(_l(profile["language"],"back"),"main")])
+            cur.execute("SELECT id,name,is_enabled,basic,additional FROM filters WHERE telegram_user_id=%s AND deleted_at IS NULL ORDER BY created_at",(uid,)); rows=cur.fetchall()
+            buttons=[[(_filter_display_name(profile["language"], row),f"additional:{row['id']}")] for row in rows]; buttons.append([(_l(profile["language"],"back"),"main")])
             _screen(cur,uid,chat_id,_l(profile["language"],"choose_filter"),buttons)
         elif data.startswith("additional:"): _additional(cur,uid,chat_id,data.split(":",1)[1])
         elif data.startswith("ad:"):
             _,fid,field=data.split(":",2)
             if field=="seller": _seller_screen(cur,uid,chat_id,fid)
             elif field=="repair": _repair_screen(cur,uid,chat_id,fid)
-            else: _documents_screen(cur,uid,chat_id,fid)
+            elif field=="documents": _documents_screen(cur,uid,chat_id,fid)
+            else: _building_floors_screen(cur,uid,chat_id,fid)
+        elif data.startswith("bf:"):
+            _, fid, field = data.split(":", 2)
+            _numeric_prompt(cur, uid, chat_id, fid, field)
         elif data.startswith("av:"):
             _,fid,field,value=data.split(":",3)
             if field=='seller':
