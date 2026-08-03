@@ -5,7 +5,7 @@ from pathlib import Path
 from .central_ingest import listing_payload, submit
 from .source_client import SourceClient
 from .source_parser import SourceParser
-from .utils import env_int, sleep_soft
+from .utils import env_int, is_recent, sleep_soft
 
 
 def filters() -> list[dict]:
@@ -46,7 +46,7 @@ def main() -> None:
     for item_filter in filters():
         batch = []
         for summary in parser.list_recent(env_int("MAX_LISTINGS_PER_RUN", 100), pages=env_int("LIST_PAGES_PER_RUN", 3), item_filter=item_filter):
-            if summary.listing_id not in known:
+            if summary.listing_id not in known and is_recent(summary.updated_at, env_int("MAX_NEW_AGE_HOURS", 24)):
                 known.add(summary.listing_id); batch.append((summary, item_filter))
         batches.append(batch)
     seen_order = load_seen()
