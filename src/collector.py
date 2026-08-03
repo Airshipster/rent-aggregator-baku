@@ -83,6 +83,9 @@ def main() -> None:
                 payload["rent_period"] = (
                     "daily" if item_filter.get("paidDaily") else "monthly" if deal_type == "rent" else None
                 )
+                # Only the national newest-feed pass may publish to the public channel.
+                # Rotating city passes are completeness backfill for private filters.
+                payload["channel_candidate"] = "cityId" not in item_filter
                 details.append(payload)
                 submitted_ids.append(summary.listing_id)
         except Exception as exc:

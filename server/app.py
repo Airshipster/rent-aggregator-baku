@@ -104,7 +104,7 @@ async def ingest(request: Request, x_signature: str | None = Header(None), x_ide
                 continue
             if not row["new_row"]:
                 continue
-            if _public_channel_enabled() and payload.get("deal_type") == "rent":
+            if _public_channel_enabled() and payload.get("deal_type") == "rent" and payload.get("channel_candidate", True):
                 cur.execute("""INSERT INTO channel_posts(listing_id,chat_id) VALUES(%s,%s)
                     ON CONFLICT(listing_id) DO NOTHING RETURNING id""", (listing_id, int(os.environ["TELEGRAM_PUBLIC_CHANNEL_ID"])))
                 channel_post = cur.fetchone()
