@@ -22,8 +22,8 @@ Rent Aggregator Baku routes:
 - webhook: `/telegram-bots/rent-aggregator-baku/webhook`
 - ingest: `/telegram-bots/rent-aggregator-baku/v1/ingest/listings`
 
-Legacy routes remain temporary compatibility aliases during cutover. A future
-SciTopus deployment must use its own `/telegram-bots/scitopus/...` routes and
+There are no legacy route aliases. A future SciTopus deployment must use its
+own `/telegram-bots/scitopus/...` routes and
 must not reference Rent Aggregator Baku service, route, volume, database or
 environment names.
 
@@ -32,8 +32,7 @@ environment names.
 Before a production cutover, create and restore-test a PostgreSQL custom-format
 dump and archive the active release plus environment file with restricted
 permissions. Transfer verified backup artifacts to the owner's computer and
-remove the server copies; the server is not a backup store. Keep the old
-`/opt/rent-aggregator-baku` entry as a compatibility symlink. Rollback consists
-of stopping the new Compose project, restoring the release and database from
+remove the server copies; the server is not a backup store. Rollback consists
+of stopping the Compose project, restoring the release and database from
 the local backup when needed, starting Compose and restoring the previous
 Telegram webhook URL.

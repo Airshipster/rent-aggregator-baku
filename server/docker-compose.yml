@@ -39,26 +39,16 @@ services:
     labels:
       traefik.enable: "true"
       traefik.docker.network: traefik
-      traefik.http.routers.rent-aggregator-baku-webhook.rule: "Host(`scitopus.com`) && Path(`/telegram/bakuarenda/webhook`)"
-      traefik.http.routers.rent-aggregator-baku-webhook.priority: "100"
+      traefik.http.routers.rent-aggregator-baku-webhook.rule: "Host(`scitopus.com`) && Path(`/telegram-bots/rent-aggregator-baku/webhook`)"
+      traefik.http.routers.rent-aggregator-baku-webhook.priority: "110"
       traefik.http.routers.rent-aggregator-baku-webhook.tls: "true"
       traefik.http.routers.rent-aggregator-baku-webhook.tls.certresolver: le
       traefik.http.routers.rent-aggregator-baku-webhook.service: rent-aggregator-baku
-      traefik.http.routers.rent-aggregator-baku-webhook-v2.rule: "Host(`scitopus.com`) && Path(`/telegram-bots/rent-aggregator-baku/webhook`)"
-      traefik.http.routers.rent-aggregator-baku-webhook-v2.priority: "110"
-      traefik.http.routers.rent-aggregator-baku-webhook-v2.tls: "true"
-      traefik.http.routers.rent-aggregator-baku-webhook-v2.tls.certresolver: le
-      traefik.http.routers.rent-aggregator-baku-webhook-v2.service: rent-aggregator-baku
-      traefik.http.routers.rent-aggregator-baku-ingest.rule: "Host(`scitopus.com`) && Path(`/v1/ingest/listings`)"
-      traefik.http.routers.rent-aggregator-baku-ingest.priority: "100"
+      traefik.http.routers.rent-aggregator-baku-ingest.rule: "Host(`scitopus.com`) && Path(`/telegram-bots/rent-aggregator-baku/v1/ingest/listings`)"
+      traefik.http.routers.rent-aggregator-baku-ingest.priority: "110"
       traefik.http.routers.rent-aggregator-baku-ingest.tls: "true"
       traefik.http.routers.rent-aggregator-baku-ingest.tls.certresolver: le
       traefik.http.routers.rent-aggregator-baku-ingest.service: rent-aggregator-baku
-      traefik.http.routers.rent-aggregator-baku-ingest-v2.rule: "Host(`scitopus.com`) && Path(`/telegram-bots/rent-aggregator-baku/v1/ingest/listings`)"
-      traefik.http.routers.rent-aggregator-baku-ingest-v2.priority: "110"
-      traefik.http.routers.rent-aggregator-baku-ingest-v2.tls: "true"
-      traefik.http.routers.rent-aggregator-baku-ingest-v2.tls.certresolver: le
-      traefik.http.routers.rent-aggregator-baku-ingest-v2.service: rent-aggregator-baku
       traefik.http.services.rent-aggregator-baku.loadbalancer.server.port: "8080"
     depends_on:
       postgres:
