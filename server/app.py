@@ -12,6 +12,7 @@ from .db import connect, migrate
 from .i18n import t
 from .matching import matches
 from .bot_ui import handle_update
+from src.utils import env_int, image_datetime, is_recent, parse_dt
 
 app = FastAPI(title="Rent Aggregator Baku")
 
@@ -21,12 +22,14 @@ def _public_channel_enabled() -> bool:
 
 
 def _public_channel_eligible(payload: dict[str, Any]) -> bool:
+    source_date = image_datetime(payload.get("first_image_url")) or parse_dt(payload.get("updated_at"))
     return (
         _public_channel_enabled()
         and payload.get("channel_candidate", True)
         and payload.get("deal_type") == "rent"
         and payload.get("city") == "Bakı"
         and payload.get("category_slug") in {"menziller/yeni-tikili", "menziller/kohne-tikili"}
+        and is_recent(source_date, env_int("MAX_PUBLIC_AGE_HOURS", 168))
     )
 
 
