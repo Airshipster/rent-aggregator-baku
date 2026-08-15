@@ -79,7 +79,7 @@ def main() -> None:
                 (ids,),
             )
             known = {row["source_listing_id"]: row for row in cursor.fetchall()}
-            cursor.execute("""SELECT c.created_at,l.payload FROM channel_posts c JOIN listings l ON l.id=c.listing_id""")
+            cursor.execute("""SELECT c.created_at,c.sent_at,l.payload FROM channel_posts c JOIN listings l ON l.id=c.listing_id""")
             historical = cursor.fetchall()
     apartment_slugs = {"menziller/yeni-tikili", "menziller/kohne-tikili"}
     for name, source_ids in period_ids.items():
@@ -112,6 +112,13 @@ def main() -> None:
         else:
             old_policy_fail += 1
     print(json.dumps({"historical_channel_rows": len(historical), "old_168h_policy_pass": old_policy_pass, "old_168h_policy_fail": old_policy_fail}, ensure_ascii=False))
+    latest_sent = sorted((row for row in historical if row["sent_at"]), key=lambda row: row["sent_at"], reverse=True)[:37]
+    latest_pass = 0
+    for row in latest_sent:
+        payload = row["payload"]
+        source_date = image_datetime(payload.get("first_image_url")) or parse_dt(payload.get("updated_at"))
+        latest_pass += int(source_date is None or source_date >= row["created_at"] - timedelta(hours=168))
+    print(json.dumps({"latest_37_policy_pass": latest_pass, "latest_37_policy_fail": len(latest_sent) - latest_pass}, ensure_ascii=False))
 
 
 if __name__ == "__main__":
