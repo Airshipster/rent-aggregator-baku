@@ -1,6 +1,9 @@
 services:
   postgres:
     image: postgres:16-alpine
+    restart: unless-stopped
+    cpus: 0.50
+    mem_limit: 768m
     environment:
       POSTGRES_DB: rent_aggregator
       POSTGRES_USER: rent_aggregator
@@ -12,6 +15,11 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+    logging: &default-logging
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
   app:
     build:
       context: ..
@@ -19,6 +27,10 @@ services:
     env_file: .env
     environment:
       DATABASE_URL: postgresql://rent_aggregator:${POSTGRES_PASSWORD}@postgres:5432/rent_aggregator
+    restart: unless-stopped
+    cpus: 0.50
+    mem_limit: 384m
+    logging: *default-logging
     ports:
       - "127.0.0.1:8080:8080"
     networks:
@@ -32,23 +44,59 @@ services:
       traefik.http.routers.rent-aggregator-baku-webhook.tls: "true"
       traefik.http.routers.rent-aggregator-baku-webhook.tls.certresolver: le
       traefik.http.routers.rent-aggregator-baku-webhook.service: rent-aggregator-baku
+      traefik.http.routers.rent-aggregator-baku-webhook-v2.rule: "Host(`scitopus.com`) && Path(`/telegram-bots/rent-aggregator-baku/webhook`)"
+      traefik.http.routers.rent-aggregator-baku-webhook-v2.priority: "110"
+      traefik.http.routers.rent-aggregator-baku-webhook-v2.tls: "true"
+      traefik.http.routers.rent-aggregator-baku-webhook-v2.tls.certresolver: le
+      traefik.http.routers.rent-aggregator-baku-webhook-v2.service: rent-aggregator-baku
       traefik.http.routers.rent-aggregator-baku-ingest.rule: "Host(`scitopus.com`) && Path(`/v1/ingest/listings`)"
       traefik.http.routers.rent-aggregator-baku-ingest.priority: "100"
       traefik.http.routers.rent-aggregator-baku-ingest.tls: "true"
       traefik.http.routers.rent-aggregator-baku-ingest.tls.certresolver: le
       traefik.http.routers.rent-aggregator-baku-ingest.service: rent-aggregator-baku
+      traefik.http.routers.rent-aggregator-baku-ingest-v2.rule: "Host(`scitopus.com`) && Path(`/telegram-bots/rent-aggregator-baku/v1/ingest/listings`)"
+      traefik.http.routers.rent-aggregator-baku-ingest-v2.priority: "110"
+      traefik.http.routers.rent-aggregator-baku-ingest-v2.tls: "true"
+      traefik.http.routers.rent-aggregator-baku-ingest-v2.tls.certresolver: le
+      traefik.http.routers.rent-aggregator-baku-ingest-v2.service: rent-aggregator-baku
       traefik.http.services.rent-aggregator-baku.loadbalancer.server.port: "8080"
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://127.0.0.1:8080/healthz', timeout=3).raise_for_status()"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
     command: uvicorn server.app:app --host 0.0.0.0 --port 8080
-  worker:
+  channel-worker:
     build:
       context: ..
       dockerfile: server/Dockerfile
     env_file: .env
     environment:
       DATABASE_URL: postgresql://rent_aggregator:${POSTGRES_PASSWORD}@postgres:5432/rent_aggregator
+      WORKER_QUEUE: channel
+    restart: unless-stopped
+    cpus: 0.35
+    mem_limit: 256m
+    logging: *default-logging
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: python -m server.worker
+  private-worker:
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://rent_aggregator:${POSTGRES_PASSWORD}@postgres:5432/rent_aggregator
+      WORKER_QUEUE: private
+    restart: unless-stopped
+    cpus: 0.45
+    mem_limit: 384m
+    logging: *default-logging
     depends_on:
       postgres:
         condition: service_healthy

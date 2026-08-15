@@ -125,8 +125,17 @@ def process_one() -> bool:
 
 def main() -> None:
     migrate()
+    queue = os.getenv("WORKER_QUEUE", "both").lower()
+    if queue not in {"channel", "private", "both"}:
+        raise ValueError("WORKER_QUEUE must be channel, private, or both")
     while True:
-        if not process_channel_one() and not process_one(): time.sleep(2)
+        processed = False
+        if queue in {"channel", "both"}:
+            processed = process_channel_one()
+        if queue in {"private", "both"} and (queue == "private" or not processed):
+            processed = process_one()
+        if not processed:
+            time.sleep(2)
 
 
 if __name__ == '__main__': main()

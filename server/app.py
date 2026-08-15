@@ -85,6 +85,7 @@ def healthz() -> dict[str, str]:
 
 
 @app.post("/v1/ingest/listings")
+@app.post("/telegram-bots/rent-aggregator-baku/v1/ingest/listings")
 async def ingest(request: Request, x_signature: str | None = Header(None), x_idempotency_key: str | None = Header(None)) -> dict[str, int]:
     body = await request.body()
     _verify_ingest(body, x_signature)
@@ -140,6 +141,7 @@ async def ingest(request: Request, x_signature: str | None = Header(None), x_ide
 
 @app.post("/telegram/webhook")
 @app.post("/telegram/bakuarenda/webhook")
+@app.post("/telegram-bots/rent-aggregator-baku/webhook")
 async def telegram_webhook(request: Request, x_telegram_bot_api_secret_token: str | None = Header(None)) -> dict[str, bool]:
     if not hmac.compare_digest(x_telegram_bot_api_secret_token or "", os.environ["TELEGRAM_WEBHOOK_SECRET"]):
         raise HTTPException(401, "invalid webhook secret")
