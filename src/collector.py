@@ -46,7 +46,7 @@ def save_state(values: list[str], city_cursor: int, removal_cursor: int) -> None
 
 def main() -> None:
     parser = SourceParser(SourceClient())
-    parser.client.get_start_page()
+    # Collection uses GraphQL; HTML availability is not an API prerequisite.
     state = load_state()
     base_filters = filters()
     cities = parser.list_cities()

@@ -27,7 +27,7 @@ def store_spool():
 def cycle():
     parser = SourceParser(SourceClient())
     beat('collector',phase='source_start')
-    parser.client.get_start_page()
+    # Collection uses GraphQL; HTML availability is not an API prerequisite.
     queries = filters()
     cities = parser.list_cities()
     with connect() as c:
