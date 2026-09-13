@@ -6,6 +6,9 @@ Last updated: 2026-09-13
 
 Read `DEPLOYMENT_2026-09-13.md` first; it supersedes the earlier not-deployed
 snapshot below. Owner explicitly authorized server restore and deployment.
+Code committed/pushed in `b4e0e61` from isolated worktree based on latest main;
+original working tree untouched. Control run `34735923269` also failed with source
+HTTP 403 (07:37 Baku), so GitHub is enabled but NOT currently verified working.
 Full restore and PostgreSQL failure tests passed; temporary DB was deleted.
 Release `20260913-reliability-r1` is live, migrations 001-013 versioned.
 1,874 channel + 14 private old send tasks cancelled, journals retained.

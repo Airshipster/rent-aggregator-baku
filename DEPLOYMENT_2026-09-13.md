@@ -1,5 +1,15 @@
 # Deployment verified on 2026-09-13
 
+Repository commit: `b4e0e61` pushed to main without force; the current collector
+state from upstream was preserved. Original local dirty files were not reset.
+
+The single post-change GitHub control run
+https://github.com/Airshipster/rent-aggregator-baku/actions/runs/34735923269
+failed at 03:37:04 UTC (07:37:04 Baku) with SourceBlockedError HTTP 403 in
+get_start_page. Checkout v5, setup-python v6 and dependencies succeeded. Thus
+source access is currently failing on BOTH server and this GitHub runner.
+No repeated manual run was attempted. This is not a successful collection test.
+
 ## Actual result
 
 Release: `/opt/Telegram-bots/bots/rent-aggregator-baku/releases/20260913-reliability-r1`.
