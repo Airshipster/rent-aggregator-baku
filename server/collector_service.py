@@ -24,6 +24,44 @@ def store_spool():
     return len(rows)
 
 
+def check_published_statuses(parser):
+    # Keep a durable round-robin cursor; only inspect listings we have delivered.
+    limit = min(50, max(0, env_int('REMOVAL_CHECKS_PER_RUN', 10)))
+    if not limit:
+        return
+    with connect() as c:
+        cursor = c.execute("SELECT details FROM service_health WHERE name='removal-cursor'").fetchone()
+        after = (cursor or {}).get('details', {}).get('after', '00000000-0000-0000-0000-000000000000')
+        sql = """SELECT l.id,l.source,l.source_listing_id FROM listings l
+            WHERE l.status='active' AND l.source IN ('source','bina.az') AND l.id > %s::uuid AND
+              (EXISTS(SELECT 1 FROM channel_posts p WHERE p.listing_id=l.id AND p.telegram_message_id IS NOT NULL)
+               OR EXISTS(SELECT 1 FROM deliveries d WHERE d.listing_id=l.id AND d.telegram_message_id IS NOT NULL))
+            ORDER BY l.id LIMIT %s"""
+        rows = c.execute(sql, (after, limit)).fetchall()
+        if not rows:
+            rows = c.execute(sql, ('00000000-0000-0000-0000-000000000000', limit)).fetchall()
+    for row in rows:
+        sleep_soft()
+        try:
+            status = parser.check_status(row['source_listing_id'])
+            if status != 'active':
+                payload = {'listing_id':row['source_listing_id'], 'source':row['source'],
+                           'listing_url':parser.client.base_url+'/items/'+row['source_listing_id'],
+                           'is_deleted':True, 'raw_status':status}
+                with connect() as c:
+                    c.execute('INSERT INTO collector_spool(source_listing_id,payload) VALUES(%s,%s::jsonb)',
+                              (row['source_listing_id'],json.dumps(payload)))
+                store_spool()
+        except SourceBlockedError:
+            raise
+        except Exception as error:
+            # Unknown is not deleted. Stop this pass so the failed item is retried.
+            beat('removal-check',error=redact_error(error),phase='failed')
+            return
+        beat('removal-cursor',success=True,after=str(row['id']))
+    beat('removal-check',success=True,checked=len(rows))
+
+
 def cycle():
     parser = SourceParser(SourceClient())
     beat('collector',phase='source_start')
@@ -50,6 +88,7 @@ def cycle():
                     source_updated_at=EXCLUDED.source_updated_at""",(summary.listing_id,summary.updated_at))
                 discovered += 1
     beat('collector-cursor',success=True,cursor=(cursor+1)%max(1,len(cities)))
+    check_published_statuses(parser)
     with connect() as c:
         c.execute("UPDATE collector_candidates SET status='expired' WHERE status='pending' AND source_updated_at < now()-interval '7 days'")
         candidates = c.execute("SELECT source_listing_id FROM collector_candidates WHERE status='pending' AND next_retry_at<=now() ORDER BY source_updated_at DESC NULLS LAST LIMIT %s",(env_int('MAX_DETAIL_FETCHES_PER_RUN',100),)).fetchall()

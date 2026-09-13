@@ -1,4 +1,5 @@
 from typing import Any
+from datetime import datetime, timezone
 
 from .models import ListingDetail, ListingSummary
 from .source_client import SourceClient
@@ -22,6 +23,24 @@ query SearchItems($first:Int,$filter:ItemFilter,$sort:ItemConnectionSort!,$curso
 """
 
 ALL_CITIES_QUERY = "query AllCities { cities { id name } }"
+
+STATUS_QUERY = "query ItemCheck($id:ID!){item(id:$id){id isExpiredManually expiresAt}}"
+
+
+def item_status(node: dict[str, Any], now: datetime | None = None) -> str:
+    if not isinstance(node, dict) or not node.get('id'):
+        raise ValueError('Invalid item status response')
+    if type(node.get('isExpiredManually')) is not bool or 'expiresAt' not in node:
+        raise ValueError('Incomplete item status response')
+    if node['isExpiredManually']:
+        return 'closed'
+    if node['expiresAt'] is not None:
+        expiry = parse_dt(node['expiresAt'])
+        if expiry is None or expiry.tzinfo is None:
+            raise ValueError('Invalid item expiry timestamp')
+        if expiry <= (now or datetime.now(timezone.utc)):
+            return 'expired'
+    return 'active'
 
 
 DETAIL_QUERY = """
@@ -111,17 +130,25 @@ class SourceParser:
 
     def get_detail(self, listing_id: str) -> ListingDetail | None:
         data = self.client.graphql(DETAIL_QUERY, {"id": listing_id})
-        node = data.get("item")
-        if not node:
+        node = data["item"]
+        if node is None:
             return None
         return self._detail_from_node(node)
 
     def check_exists(self, listing_id: str) -> bool:
-        data = self.client.graphql("query ItemCheck($id:ID!){item(id:$id){id isExpiredManually}}", {"id": listing_id})
-        item = data.get("item")
-        return bool(item and not item.get("isExpiredManually"))
+        return self.check_status(listing_id) == 'active'
+
+    def check_status(self, listing_id: str) -> str:
+        data = self.client.graphql(STATUS_QUERY, {"id": listing_id})
+        item = data["item"]
+        if item is None:
+            return 'unavailable'
+        if str(item.get('id')) != str(listing_id):
+            raise ValueError('Item status ID mismatch')
+        return item_status(item)
 
     def _detail_from_node(self, node: dict[str, Any]) -> ListingDetail:
+        status = item_status(node)
         listing_id = str(node.get("id") or "")
         path = node.get("path") or f"/items/{listing_id}"
         price = node.get("price") or {}
@@ -167,8 +194,8 @@ class SourceParser:
             latitude=latitude,
             longitude=longitude,
             updated_at=parse_dt(node.get("updatedAt")),
-            is_deleted=bool(node.get("isExpiredManually")),
-            raw_status="expired" if node.get("isExpiredManually") else None,
+            is_deleted=status != 'active',
+            raw_status=status if status != 'active' else None,
             has_bill_of_sale=node.get("hasBillOfSale"),
             has_mortgage=node.get("hasMortgage"),
             land_area_m2=land_area.get("value"),
