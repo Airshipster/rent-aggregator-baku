@@ -41,6 +41,20 @@ class ListingStatusTests(unittest.TestCase):
         parser.client.graphql.return_value = {'item':None}
         self.assertEqual(parser.check_status('1'), 'unavailable')
 
+    def test_batch_uses_one_request_and_validates_each_item(self):
+        parser = SourceParser(Mock())
+        parser.client.graphql.return_value = {'i0':{'id':'1','isExpiredManually':False,'expiresAt':None},'i1':None}
+        self.assertEqual(parser.check_statuses(['1','2']),{'1':'active','2':'unavailable'})
+        self.assertEqual(parser.client.graphql.call_count,1)
+        parser.client.graphql.return_value = {'i0':{'id':'wrong','isExpiredManually':False,'expiresAt':None}}
+        with self.assertRaises(ValueError): parser.check_statuses(['1'])
+
+    def test_batch_missing_data_never_means_removed(self):
+        parser = SourceParser(Mock())
+        parser.client.graphql.return_value = {}
+        with self.assertRaises(KeyError): parser.check_statuses(['1'])
+        with self.assertRaises(ValueError): parser.check_statuses([str(i) for i in range(51)])
+
     def test_source_errors_propagate(self):
         parser = SourceParser(Mock())
         for error in (SourceBlockedError('403'), TimeoutError(), RuntimeError('GraphQL error')):
@@ -69,7 +83,7 @@ class ListingStatusTests(unittest.TestCase):
                 {'id':'00000000-0000-0000-0000-000000000001','source':'source','source_listing_id':'6113739'}]
             parser = Mock()
             parser.client.base_url = 'https://bina.az'
-            parser.check_status.return_value = status
+            parser.check_statuses.return_value = {'6113739':status}
             with patch('server.collector_service.connect') as connect, \
                  patch('server.collector_service.sleep_soft'), \
                  patch('server.collector_service.beat'), \
@@ -84,7 +98,7 @@ class ListingStatusTests(unittest.TestCase):
         conn.execute.return_value.fetchall.return_value = [
             {'id':'00000000-0000-0000-0000-000000000001','source':'source','source_listing_id':'6113739'}]
         parser = Mock()
-        parser.check_status.side_effect = TimeoutError()
+        parser.check_statuses.side_effect = TimeoutError()
         with patch('server.collector_service.connect') as connect, \
              patch('server.collector_service.sleep_soft'), \
              patch('server.collector_service.beat') as beat, \

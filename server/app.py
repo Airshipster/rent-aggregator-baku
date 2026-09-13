@@ -95,7 +95,9 @@ async def collector_status(request: Request, x_signature: str | None = Header(No
         from .health import beat
         beat('github-standby',success=True,phase='ready')
         with connect() as c:
-            row = c.execute("SELECT heartbeat_at > now()-interval '180 seconds' active,details FROM service_health WHERE name='collector'").fetchone()
+            row = c.execute("""SELECT heartbeat_at > now()-interval '180 seconds'
+                AND last_error IS NULL AND last_success_at > now()-interval '5 minutes' active,
+                details FROM service_health WHERE name='collector'""").fetchone()
         return {'primary_active':bool(row and row['active']),
                 'source_blocked':bool(row and row['details'].get('phase')=='source_blocked')}
     return await run_in_threadpool(status)
@@ -121,7 +123,7 @@ def _store_ingest(body: bytes, x_idempotency_key: str) -> dict[str, int]:
               ON CONFLICT(source,source_listing_id) DO UPDATE SET
               payload=CASE WHEN EXCLUDED.status='removed' THEN listings.payload || jsonb_build_object('is_deleted',true,'raw_status','removed') ELSE EXCLUDED.payload END,
               last_seen_at=now(),
-              status=EXCLUDED.status,removed_at=CASE WHEN EXCLUDED.status='removed' THEN now() ELSE NULL END
+              status=EXCLUDED.status,removed_at=CASE WHEN EXCLUDED.status='removed' THEN COALESCE(listings.removed_at,now()) ELSE NULL END
               RETURNING id,(xmax=0) AS new_row,status""", (source,source_id,json.dumps(payload),status,status))
             row = cur.fetchone(); listing_id = row["id"]; inserted += int(row["new_row"])
             if status == "removed":

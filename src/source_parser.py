@@ -147,6 +147,24 @@ class SourceParser:
             raise ValueError('Item status ID mismatch')
         return item_status(item)
 
+    def check_statuses(self, listing_ids: list[str]) -> dict[str, str]:
+        ids = list(dict.fromkeys(listing_ids))
+        if not ids:
+            return {}
+        if len(ids) > 50:
+            raise ValueError('Status batch exceeds 50 items')
+        variables = {f'i{i}': str(value) for i,value in enumerate(ids)}
+        declarations = ','.join(f'${key}:ID!' for key in variables)
+        fields = ' '.join(f'{key}:item(id:${key}){{id isExpiredManually expiresAt}}' for key in variables)
+        data = self.client.graphql(f'query StatusBatch({declarations}){{{fields}}}', variables)
+        result = {}
+        for key, value in variables.items():
+            node = data[key]
+            if node is not None and str(node.get('id')) != value:
+                raise ValueError('Item status ID mismatch')
+            result[value] = 'unavailable' if node is None else item_status(node)
+        return result
+
     def _detail_from_node(self, node: dict[str, Any]) -> ListingDetail:
         status = item_status(node)
         listing_id = str(node.get("id") or "")

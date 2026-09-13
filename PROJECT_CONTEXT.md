@@ -2,7 +2,40 @@
 
 Last updated: 2026-09-13
 
-## Latest: deployment completed, source access degraded
+## Latest: lifecycle and admin monitoring r4
+
+Read LIFECYCLE_ROLLOUT_2026-09-13.md first. Release 20260913-lifecycle-r4 deployed;
+migration 014 cleanup receipts. Local snapshot restored/tested and temporary DB
+dropped. 55 tests passed. Admin System status is in main menu/settings. Alerts
+are change-based. Channel cleanup deletes within Bot API 48-hour limit, otherwise
+compacts; private rich messages edited in place (admin test passed). Journal
+details compact after 14 days following confirmed cleanup; minimal dedupe keys
+remain. 132 old payloads compacted; 286 legacy channel tasks queued, not all done.
+50 statuses per GraphQL request, 90-second detail budget, 120-second cadence.
+GitHub standby healthy-primary path verified in run 34767025281. Full outage
+failover and five-minute source-publication SLA not proven; no public push API.
+
+## Latest: listing status checks deployed
+
+Release 20260913-status-r3 changes only collector. GitHub main commit 2de6d56.
+Read LISTING_STATUS_2026-09-13.md. API and browser confirm manual closure of
+6451158 and time expiry of 6113739 (despite isExpiredManually=false).
+Shared parser now handles both; incomplete/error responses are not removal.
+Server checks 10 previously delivered active listings per cycle with durable
+cursor/spool. First 10-check pass succeeded at 16:53:39 Baku without errors.
+47 unit tests passed. Whole archive recheck is gradual, not a five-minute promise.
+
+## Latest: GraphQL access verified and collector corrected
+
+At about 16:25 Baku on 2026-09-13, the existing /graphql endpoint returned
+HTTP 200 from production for both a minimal query and real listing data.
+HTML /kiraye 403 had incorrectly been treated as whole-source unavailability.
+Removed the unused HTML prerequisite in both collectors; API refusal still stops
+collection. Collector-only release 20260913-api-r2 is current; other services keep
+r1. Initial 64 payloads accepted into PostgreSQL. GitHub main includes fix 86b7130
+via merge 4b6136f. Read API_ACCESS_2026-09-13.md. Five-minute SLA remains unproven.
+
+## Earlier deployment report (source diagnosis superseded above)
 
 Read `DEPLOYMENT_2026-09-13.md` first; it supersedes the earlier not-deployed
 snapshot below. Owner explicitly authorized server restore and deployment.

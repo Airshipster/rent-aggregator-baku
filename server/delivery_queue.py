@@ -17,9 +17,9 @@ def claim(queue, cutoff):
         if c.execute("SELECT 1 FROM telegram_cooldowns WHERE name='bot' AND until_at>now()").fetchone():
             return None
         # A committed processing row means the request may have reached Telegram.
-        c.execute(f"""UPDATE {tasks} SET status=CASE WHEN task_type='send' OR %s='private' THEN 'uncertain' ELSE 'failed' END,
+        c.execute(f"""UPDATE {tasks} SET status=CASE WHEN task_type='send' THEN 'uncertain' ELSE 'failed' END,
             last_error='worker interrupted; delivery outcome requires reconciliation'
-            WHERE status='processing' AND locked_at < now()-interval '5 minutes'""",(queue,))
+            WHERE status='processing' AND locked_at < now()-interval '5 minutes'""")
         extra = ''
         args = [cutoff]
         if queue == 'private':
@@ -30,11 +30,11 @@ def claim(queue, cutoff):
             elif os.getenv('PRIVATE_DELIVERY_MODE') != 'all_approved':
                 raise ValueError('Invalid PRIVATE_DELIVERY_MODE')
         row = c.execute(f"""SELECT o.*,p.id parent_id,p.chat_id,p.telegram_message_id,
-            l.payload,l.first_seen_at {',p.telegram_user_id' if queue=='private' else ''}
+            l.payload,l.first_seen_at,p.sent_at parent_sent_at {',p.telegram_user_id' if queue=='private' else ''}
             FROM {tasks} o JOIN {parent} p ON p.id=o.{fk} JOIN listings l ON l.id=p.listing_id
             WHERE (o.task_type='mark_removed' OR o.created_at >= %s)
             AND o.status IN ('pending','failed') AND o.next_retry_at <= now() {extra}
-            ORDER BY o.created_at FOR UPDATE OF o SKIP LOCKED LIMIT 1""",args).fetchone()
+            ORDER BY CASE WHEN o.task_type='send' THEN 0 ELSE 1 END,o.created_at FOR UPDATE OF o SKIP LOCKED LIMIT 1""",args).fetchone()
         if not row:
             return None
         reason = None
@@ -67,6 +67,8 @@ def finish(queue, task, status, message_id=None, error=None, due=None):
             WHERE id=%s AND status='processing'""",(status,error,due,status,task['id']))
         c.execute('UPDATE delivery_attempts SET finished_at=now(),outcome=%s,error=%s,telegram_message_id=%s WHERE id=%s',
                   (status,error,message_id,task['attempt_id']))
+        if status == 'sent' and task['task_type'] == 'mark_removed':
+            c.execute('INSERT INTO message_cleanup_receipts(queue,parent_id) VALUES(%s,%s) ON CONFLICT DO NOTHING',(queue,task['parent_id']))
         if status == 'sent' and task['task_type'] == 'send':
             c.execute(f"UPDATE {parent} SET status='sent',telegram_message_id=%s,sent_at=now(),last_error=NULL,updated_at=now() WHERE id=%s",(message_id,task['parent_id']))
         elif status == 'sent' and queue == 'channel':

@@ -7,7 +7,7 @@ import requests
 from .db import migrate
 from .delivery_queue import claim, finish, pause_bot
 from .health import beat
-from .retention import expire_pending
+from .retention import expire_pending, compact_retired
 from src.formatter_private_rich import format_private_rich
 from src.formatter_public_az import format_public
 from src.models import ListingDetail
@@ -58,13 +58,31 @@ def send(queue, task):
     client = TelegramClient(defer_retries=True)
     item = listing(task['payload'])
     if task['task_type'] == 'mark_removed':
-        text = {'ru':'❌ Объявление удалено','az':'❌ Elan silinib','en':'❌ Listing removed'}.get(task.get('language','az'))
+        text = {'ru':'❌ Объявление больше не актуально','az':'❌ Elan artıq aktual deyil','en':'❌ Listing no longer available'}.get(task.get('language','az'))
         if queue == 'channel':
+            sent_at = task.get('parent_sent_at')
+            if sent_at and datetime.now(timezone.utc)-sent_at < timedelta(hours=48):
+                try:
+                    client.call('deleteMessage',{'chat_id':task['chat_id'],'message_id':task['telegram_message_id']})
+                    return {'message_id':task['telegram_message_id']}
+                except TelegramAPIError as error:
+                    if error.code != 400:
+                        raise
+                    if 'message to delete not found' in str(error).lower():
+                        return {'message_id':task['telegram_message_id']}
+                    if "can't be deleted" not in str(error).lower():
+                        raise
+            payload = {'text':text+'\n№ '+item.listing_id,'link_preview_options':{'is_disabled':True}}
+        else:
+            html, media = format_private_rich(item,item.image_urls,task['language'])
+            payload = {'rich_message':{'html':'<p><b>'+text+'</b></p>'+html,'media':media}}
+        try:
             return client.call('editMessageText',{'chat_id':task['chat_id'],'message_id':task['telegram_message_id'],
-                'text':text+'\n\n'+format_public(item),'parse_mode':'HTML'})
-        # Rich messages lack a verified lossless edit path; use one tracked reply.
-        return client.call('sendMessage',{'chat_id':task['chat_id'],'text':text,
-            'reply_parameters':{'message_id':task['telegram_message_id'],'allow_sending_without_reply':True}})
+                **payload,'reply_markup':{'inline_keyboard':[]}})
+        except TelegramAPIError as error:
+            if error.code == 400 and ('message is not modified' in str(error).lower() or 'message to edit not found' in str(error).lower()):
+                return {'message_id':task['telegram_message_id']}
+            raise
     if queue == 'channel':
         return client.call('sendMessage',{'chat_id':task['chat_id'],'text':format_public(item),'parse_mode':'HTML',
             'link_preview_options':{'url':item.listing_url,'prefer_large_media':True}})
@@ -89,7 +107,7 @@ def process(queue):
         due = retry_at(task['attempts'],error)
         if isinstance(error,TelegramAPIError) and error.code==429:
             pause_bot(due)
-        creates_message = task['task_type']=='send' or queue=='private'
+        creates_message = task['task_type']=='send'
         if creates_message and (isinstance(error,requests.RequestException) or not isinstance(error,TelegramAPIError) or (error.code or 500)>=500):
             status = 'uncertain'
         finish(queue,task,status,error=redact_error(error),due=due)
@@ -113,8 +131,12 @@ def main():
     if queue not in {'channel','private','both'}:
         raise ValueError('Invalid WORKER_QUEUE')
     last_maintenance = 0
+    last_compaction = 0
     while True:
         try:
+            if queue in {'channel','both'} and os.getenv('RETENTION_COMPACTION_ENABLED') == 'true' and time.monotonic()-last_compaction > 3600:
+                beat('retention',success=True,compacted=compact_retired())
+                last_compaction = time.monotonic()
             if time.monotonic()-last_maintenance >= 30:
                 counts = expire_pending()
                 beat('worker-'+queue,success=True,expired=counts,enabled=delivery_cutoff() is not None)

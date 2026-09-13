@@ -26,7 +26,7 @@ def store_spool():
 
 def check_published_statuses(parser):
     # Keep a durable round-robin cursor; only inspect listings we have delivered.
-    limit = min(50, max(0, env_int('REMOVAL_CHECKS_PER_RUN', 10)))
+    limit = min(50, max(0, env_int('REMOVAL_CHECKS_PER_RUN', 50)))
     if not limit:
         return
     with connect() as c:
@@ -40,10 +40,16 @@ def check_published_statuses(parser):
         rows = c.execute(sql, (after, limit)).fetchall()
         if not rows:
             rows = c.execute(sql, ('00000000-0000-0000-0000-000000000000', limit)).fetchall()
+    try:
+        statuses = parser.check_statuses([row['source_listing_id'] for row in rows])
+    except SourceBlockedError:
+        raise
+    except Exception as error:
+        beat('removal-check',error=redact_error(error),phase='failed')
+        return
     for row in rows:
-        sleep_soft()
         try:
-            status = parser.check_status(row['source_listing_id'])
+            status = statuses[row['source_listing_id']]
             if status != 'active':
                 payload = {'listing_id':row['source_listing_id'], 'source':row['source'],
                            'listing_url':parser.client.base_url+'/items/'+row['source_listing_id'],
@@ -63,6 +69,7 @@ def check_published_statuses(parser):
 
 
 def cycle():
+    started = time.monotonic()
     parser = SourceParser(SourceClient())
     beat('collector',phase='source_start')
     # Collection uses GraphQL; HTML availability is not an API prerequisite.
@@ -91,9 +98,14 @@ def cycle():
     check_published_statuses(parser)
     with connect() as c:
         c.execute("UPDATE collector_candidates SET status='expired' WHERE status='pending' AND source_updated_at < now()-interval '7 days'")
-        candidates = c.execute("SELECT source_listing_id FROM collector_candidates WHERE status='pending' AND next_retry_at<=now() ORDER BY source_updated_at DESC NULLS LAST LIMIT %s",(env_int('MAX_DETAIL_FETCHES_PER_RUN',100),)).fetchall()
+        candidates = c.execute("""SELECT source_listing_id FROM collector_candidates cc WHERE status='pending' AND next_retry_at<=now()
+            ORDER BY EXISTS(SELECT 1 FROM listings l WHERE l.source IN ('source','bina.az') AND l.source_listing_id=cc.source_listing_id),
+            source_updated_at DESC NULLS LAST LIMIT %s""",(env_int('MAX_DETAIL_FETCHES_PER_RUN',100),)).fetchall()
     fetched = 0
     for row in candidates:
+        # Leave unprocessed rows durable for the next pass, keeping discovery frequent.
+        if time.monotonic()-started >= max(30,env_int('COLLECTOR_CYCLE_BUDGET_SECONDS',90)):
+            break
         source_id = row['source_listing_id']
         beat('collector',phase='detail',fetched=fetched)
         sleep_soft()

@@ -437,6 +437,8 @@ def _main(cur, uid: int, chat_id: int, language: str) -> None:
         [(_l(language,"additional"), "additional:list")],
         [(_l(language,"settings"), "settings")],
     ]
+    if str(uid) == os.getenv('TELEGRAM_ADMIN_USER_ID'):
+        rows.append([({'ru':'📡 Состояние системы','az':'📡 Sistemin vəziyyəti','en':'📡 System status'}[language],'settings:system')])
     _screen(cur, uid, chat_id, _l(language,"choose"), rows)
 
 
@@ -460,6 +462,7 @@ def _settings(cur, uid: int, chat_id: int, admin: bool) -> None:
     city_row = cur.fetchone() or {}; city_id=city_row.get("default_city_id") or 1
     rows = [[(_l(language,"language"), "settings:language")], [(f"{_l(language,'city')}: {city_label(city_id,language)}", "settings:city:0")], [(_l(language,"payment"), "settings:payment")]]
     if admin:
+        rows.append([({'ru':'📡 Состояние системы','az':'📡 Sistemin vəziyyəti','en':'📡 System status'}[language], 'settings:system')])
         rows.append([(_l(language,"requests"), "settings:applications")])
         rows.append([(_l(language,"access"), "settings:access")])
     rows.append([(_l(language,"back"), "main")])
@@ -1135,6 +1138,11 @@ def handle_update(update: dict[str, Any]) -> dict[str, bool]:
             _screen(cur,uid,chat_id,t(profile["language"],"closed"),[[(t(profile["language"],"apply"),"apply")]])
         elif data=="main": _main(cur,uid,chat_id,profile["language"])
         elif data=="settings": _settings(cur,uid,chat_id,uid==admin_id)
+        elif data=="settings:system" and uid==admin_id:
+            from .system_status import snapshot, render
+            language = _user_language(cur,uid)
+            refresh = {'ru':'🔄 Обновить','az':'🔄 Yenilə','en':'🔄 Refresh'}[language]
+            _screen(cur,uid,chat_id,render(snapshot(cur),language),[[(refresh,'settings:system')],[(_l(language,'back'),'settings')]])
         elif data=="settings:language": _language_screen(cur,uid,chat_id)
         elif data.startswith("settings:city:"):
             _city_screen(cur,uid,chat_id,int(data.rsplit(":",1)[1]))

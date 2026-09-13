@@ -40,8 +40,8 @@ class ReliabilityTests(unittest.TestCase):
     def test_lost_response_not_retried(self):
         self.assertEqual(self.run_error(requests.Timeout())[0],'uncertain')
 
-    def test_private_removal_reply_lost_response_not_retried(self):
-        self.assertEqual(self.run_error(requests.Timeout(),kind='mark_removed')[0],'uncertain')
+    def test_private_removal_edit_can_retry_without_creating_messages(self):
+        self.assertEqual(self.run_error(requests.Timeout(),kind='mark_removed')[0],'failed')
 
     def test_429_pauses_both_delivery_workers(self):
         self.assertEqual(self.run_error(TelegramAPIError({'error_code':429,'parameters':{'retry_after':60}})),('failed',1))
