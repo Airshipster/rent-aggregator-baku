@@ -5,6 +5,7 @@ from html import escape
 from typing import Any
 
 import requests
+from .ranges import FIELDS as RANGE_FIELDS, number, parse_range
 
 from .db import connect
 from .i18n import t
@@ -566,7 +567,8 @@ def _filter_summary(language: str, rule: dict[str, Any]) -> str:
     lines.append(f"{_l(language, 'price_label')}: {_range_text(language, basic.get('price_min'), basic.get('price_max'), 'AZN')}")
     if category_key in {"new", "old", "office", "house"}:
         lines.append(f"{_l(language, 'rooms_label')}: {_range_text(language, basic.get('rooms_min'), basic.get('rooms_max'))}")
-    lines.append(f"{_l(language, 'area_label')}: {_range_text(language, basic.get(area_prefix + '_min'), basic.get(area_prefix + '_max'), 'm²')}")
+    area_unit = 'sot' if area_prefix == 'land_area_m2' else 'm²'
+    lines.append(f"{_l(language, 'area_label')}: {_range_text(language, basic.get(area_prefix + '_min'), basic.get(area_prefix + '_max'), area_unit)}")
     if category_key in {"new", "old"}:
         lines.append(f"{_l(language, 'floor_label')}: {_range_text(language, basic.get('floor_min'), basic.get('floor_max'))}")
         lines.append(f"{_l(language, 'building_floors')}: {_range_text(language, basic.get('total_floors_min'), basic.get('total_floors_max'))}")
@@ -608,51 +610,101 @@ def _number_rows(language: str, filter_id: str, field: str, values: list[str], a
     return rows
 
 
-def _numeric_prompt(cur, uid: int, chat_id: int, filter_id: str, field: str) -> None:
+RANGE_COPY = {
+    'ru': ('Введите диапазон, например 7-15, от 7 или до 15. Одно число означает точное значение. Для тысяч используйте пробел: 1 500.', 'Применить диапазон', 'Не удалось распознать диапазон. Проверьте порядок чисел, единицы и разделители.', 'Точное значение'),
+    'az': ('Aralığı yazın: 7-15, min 7 və ya max 15. Bir ədəd dəqiq qiymət deməkdir. Minlikləri boşluqla ayırın: 1 500.', 'Aralığı tətbiq et', 'Aralıq tanınmadı. Ədədlərin sırasını, vahidləri və ayırıcıları yoxlayın.', 'Dəqiq qiymət'),
+    'en': ('Enter a range: 7-15, from 7 or up to 15. One number means an exact value. Separate thousands with a space: 1 500.', 'Apply range', 'Invalid range. Check number order, units and separators.', 'Exact value'),
+}
+RANGE_CODES = {'p':'price','r':'rooms','a':'area_m2','l':'land_area_m2','f':'floor','b':'total_floors'}
+
+
+def _range_screen(cur, uid, chat_id, filter_id, field, proposed=None, error=False):
+    rule = _get_filter(cur, filter_id, uid)
+    if not rule or field not in RANGE_FIELDS:
+        return
     language = _user_language(cur, uid)
-    prompts = {
-        "price_min": "price_min_prompt", "price_max": "price_max_prompt",
-        "rooms_min": "rooms_min_prompt", "rooms_max": "rooms_max_prompt",
-        "area_m2_min": "area_min_prompt", "area_m2_max": "area_max_prompt",
-        "land_area_m2_min": "land_area_min_prompt", "land_area_m2_max": "land_area_max_prompt",
-        "floor_min": "floor_min", "floor_max": "floor_max",
-        "total_floors_min": "floor_min", "total_floors_max": "floor_max",
-    }
-    cur.execute("SELECT basic FROM filters WHERE id=%s AND telegram_user_id=%s", (filter_id, uid))
-    basic = (cur.fetchone() or {}).get("basic") or {}
-    sale = basic.get("deal_type") == ["sale"]
-    daily = basic.get("rent_period") == ["daily"]
-    if field.startswith("price"):
-        values = (["50000", "100000", "150000", "250000", "500000"] if sale else ["30", "50", "80", "100", "150", "250"] if daily else ["300", "500", "800", "1000", "1500", "2500"])
-    elif field.startswith("rooms"):
-        values = ["1", "2", "3", "4", "5", "7", "10"]
-    elif field.startswith("land_area"):
-        values = ["1", "3", "5", "10", "20", "50", "100"]
-    elif field.startswith("area"):
-        values = ["30", "50", "70", "100", "150", "300", "500"]
+    copy = RANGE_COPY[language]
+    basic = rule['basic']
+    bounds = proposed if proposed is not None else (basic.get(field+'_min'), basic.get(field+'_max'))
+    cur.execute('UPDATE users SET wizard=%s::jsonb WHERE telegram_user_id=%s',
+                (json.dumps({'await':'filter_range','filter_id':filter_id,'field':field,'bounds':bounds}),uid))
+    code = next(k for k,v in RANGE_CODES.items() if v==field)
+    label = {'price':'price_label','rooms':'rooms_label','area_m2':'area_label','land_area_m2':'area_label','floor':'floor_label','total_floors':'building_floors'}[field]
+    unit = 'AZN' if field=='price' else 'sot' if field=='land_area_m2' else 'm²' if field=='area_m2' else ''
+    display = bounds
+    selected = _range_text(language,*display,unit)
+    if bounds[0] is not None and bounds[0]==bounds[1]:
+        selected = copy[3]+': '+selected
+    presets = ['1-3','3-7','7-15'] if field in {'rooms','floor','total_floors'} else ['30-70','70-150','150+'] if field=='area_m2' else ['1-5','5-10','10+'] if field=='land_area_m2' else ['300-800','800-1500','1500+']
+    if field=='price' and basic.get('deal_type')==['sale']:
+        presets=['50000-100000','100000-200000','200000+']
+    elif field=='price' and basic.get('rent_period')==['daily']:
+        presets=['20-50','50-100','100+']
+    rows = [[(_l(language,'any'),f'rg:{filter_id}:{code}:any')]]
+    rows += [[(value,f'rg:{filter_id}:{code}:{value}')] for value in presets]
+    rows += [[(copy[1],f'rc:{filter_id}:{code}')],[(_l(language,'back'),f'rb:{filter_id}:{code}')]]
+    text = f"<b>{_l(language,label)}{(' ('+unit+')') if unit else ''}</b>\n{selected}\n\n{copy[0]}"
+    if error:
+        text = copy[2]+'\n\n'+text
+    _screen(cur,uid,chat_id,text,rows)
+
+
+def _range_save(cur, uid, chat_id, filter_id, field, bounds):
+    rule = _get_filter(cur,filter_id,uid)
+    if not rule:
+        return
+    basic = dict(rule['basic'])
+    for suffix,value in zip(('_min','_max'),bounds):
+        basic.pop(field+suffix,None)
+        if value is not None:
+            basic[field+suffix]=value
+    cur.execute('UPDATE filters SET basic=%s::jsonb,updated_at=now() WHERE id=%s AND telegram_user_id=%s', (json.dumps(basic),filter_id,uid))
+    cur.execute("UPDATE users SET wizard='{}'::jsonb WHERE telegram_user_id=%s",(uid,))
+    if field in {'floor','total_floors'}:
+        _additional(cur,uid,chat_id,filter_id)
     else:
-        values = ["1", "2", "3", "5", "10", "15", "20", "30"]
-    rows = _number_rows(language, filter_id, field, values)
-    rows.append([(_l(language, "back"), f"nprev:{filter_id}:{field}")])
-    _screen(cur, uid, chat_id, f"<b>{_l(language, prompts[field])}</b>", rows)
+        _wizard(cur,uid,chat_id,filter_id,_number_next_step(cur,filter_id,field+'_max'))
 
 
-def _enqueue_today(cur, uid: int, filter_id: str) -> int:
-    cur.execute("SELECT basic,additional FROM filters WHERE id=%s AND telegram_user_id=%s AND deleted_at IS NULL",(filter_id,uid)); rule=cur.fetchone()
+def _numeric_prompt(cur, uid: int, chat_id: int, filter_id: str, field: str) -> None:
+    _range_screen(cur, uid, chat_id, filter_id, field.rsplit('_', 1)[0])
+
+
+def _enqueue_today(cur, uid: int, filter_id: str, preview: bool = False) -> int:
+    from .retention import fresh_for_delivery
+    cur.execute("SELECT basic,additional FROM filters WHERE id=%s AND telegram_user_id=%s AND deleted_at IS NULL AND is_enabled",(filter_id,uid)); rule=cur.fetchone()
     if not rule: return 0
     cur.execute("SELECT chat_id FROM users WHERE telegram_user_id=%s AND state='approved'",(uid,)); account=cur.fetchone()
     if not account: return 0
-    cur.execute("""SELECT id,payload FROM listings WHERE status='active'
+    cur.execute("""SELECT id,payload FROM listings l WHERE status='active'
       AND first_seen_at >= ((now() AT TIME ZONE 'Asia/Baku')::date AT TIME ZONE 'Asia/Baku')
-      ORDER BY first_seen_at""")
+      AND NOT EXISTS (SELECT 1 FROM deliveries d WHERE d.listing_id=l.id AND d.telegram_user_id=%s)
+      ORDER BY first_seen_at""", (uid,))
     queued=0
     for item in cur.fetchall():
+        if not fresh_for_delivery(item['payload']): continue
         if not matches(item["payload"],rule["basic"],rule["additional"]): continue
+        if preview:
+            queued += 1
+            continue
         cur.execute("""INSERT INTO deliveries(listing_id,telegram_user_id,chat_id) VALUES(%s,%s,%s)
           ON CONFLICT(listing_id,telegram_user_id) DO NOTHING RETURNING id""",(item["id"],uid,account["chat_id"])); delivery=cur.fetchone()
         if delivery:
             cur.execute("INSERT INTO outbox_tasks(delivery_id,task_type) VALUES(%s,'send') ON CONFLICT DO NOTHING",(delivery["id"],)); queued+=1
     return queued
+
+
+def _offer_today(cur, uid, chat_id, filter_id, language):
+    count = _enqueue_today(cur,uid,filter_id,preview=True)
+    text = {
+        'ru':f'Фильтр включён. Найдено сегодня по времени Баку: {count}. Это время обнаружения, не подтверждённая дата публикации. Отправить их? Новые совпадения будут приходить автоматически.',
+        'az':f'Filtr aktivdir. Bakı vaxtı ilə bu gün aşkarlanan: {count}. Bu, aşkarlanma vaxtıdır, təsdiqlənmiş dərc tarixi deyil. Göndərilsin? Yeni uyğun elanlar avtomatik gələcək.',
+        'en':f'Filter enabled. Discovered today in Baku time: {count}. This is discovery time, not a verified publication date. Send these? New matches will arrive automatically.',
+    }[language]
+    label={'ru':'Получить найденные','az':'Tapılanları al','en':'Receive matches'}[language]
+    rows=[[(label,f'today:{filter_id}')]] if count else []
+    rows += [[(_l(language,'main'),'main')]]
+    _screen(cur,uid,chat_id,text,rows)
 
 
 def _wizard(cur, uid: int, chat_id: int, filter_id: str, step: str, context: dict[str, Any] | None = None) -> None:
@@ -696,6 +748,7 @@ def _wizard(cur, uid: int, chat_id: int, filter_id: str, step: str, context: dic
         if basic.get("deal_type") == ["sale"]:
             rows.append([(_l(language, "documents"), f"ad:{filter_id}:documents")])
         if basic.get("category_key") in {"new", "old"}:
+            rows.append([(_l(language, "floor_label"), f"ad:{filter_id}:floor")])
             rows.append([(_l(language, "building_floors"), f"ad:{filter_id}:building_floors")])
         rows.extend([[(_l(language, "activate"), f"filter:activate:{filter_id}")], back])
         _screen(cur, uid, chat_id, f"<b>{_l(language, 'filter_ready')}</b>\n\n{_l(language, 'additional_warning')}", rows)
@@ -703,6 +756,8 @@ def _wizard(cur, uid: int, chat_id: int, filter_id: str, step: str, context: dic
 
 def _wizard_callback(cur, uid: int, chat_id: int, data: str) -> None:
     _, filter_id, step, value = data.split(":", 3)
+    if not _get_filter(cur, filter_id, uid):
+        return
     if step == "deal":
         cur.execute("SELECT basic FROM filters WHERE id=%s AND telegram_user_id=%s", (filter_id, uid))
         previous = (cur.fetchone() or {}).get("basic") or {}
@@ -743,18 +798,23 @@ def _number_next_step(cur, filter_id: str, field: str) -> str:
     if field == "price_max":
         return "rooms_min" if category in {"new", "old", "office", "house"} else "area_min"
     if field in {"area_m2_max", "land_area_m2_max"}:
-        return "floor_min" if category in {"new", "old"} else "district" if city_is_baku else "done"
+        return "district" if city_is_baku else "done"
     if field == "floor_max":
         return "district" if city_is_baku else "done"
     return mapping[field]
 
 
 def _apply_number(cur, uid: int, chat_id: int, filter_id: str, field: str, raw_value: str) -> None:
-    value = None if raw_value == "any" else float(raw_value.replace(" ", "").replace(",", "."))
-    if value is not None and value <= 0:
-        raise ValueError("number must be positive")
-    if field.startswith("rooms") or field.startswith("floor") or field.startswith("total_floors") or field.startswith("price"):
-        value = int(value) if value is not None else None
+    prefix, bound = field.rsplit('_', 1)
+    if prefix not in RANGE_FIELDS or bound not in {'min', 'max'}:
+        raise ValueError('unknown numeric field')
+    value = None if raw_value == "any" else number(raw_value, prefix in {'rooms','floor','total_floors'})
+    rule = _get_filter(cur, filter_id, uid)
+    if not rule:
+        return
+    opposite = rule['basic'].get(prefix + ('_max' if bound == 'min' else '_min'))
+    if value is not None and opposite is not None and ((bound == 'min' and value > opposite) or (bound == 'max' and value < opposite)):
+        raise ValueError('minimum exceeds maximum')
     _set_basic(cur, filter_id, uid, field, value)
     if field.startswith("total_floors"):
         _building_floors_screen(cur, uid, chat_id, filter_id)
@@ -778,8 +838,8 @@ def _wizard_previous_step(cur, filter_id: str, step: str) -> str | None:
     if step == "area_max": return "area_min"
     if step == "floor_min": return "area_max"
     if step == "floor_max": return "floor_min"
-    if step == "district": return "floor_max" if category in {"new", "old"} else "area_max"
-    if step == "done": return "district" if basic.get("city") == ["Bakı"] else "floor_max" if category in {"new", "old"} else "area_max"
+    if step == "district": return "area_max"
+    if step == "done": return "district" if basic.get("city") == ["Bakı"] else "area_max"
     return None
 
 
@@ -820,16 +880,7 @@ def _toggle_district(cur, uid: int, filter_id: str, key: str) -> None:
 
 
 def _building_floors_screen(cur, uid: int, chat_id: int, filter_id: str) -> None:
-    language = _user_language(cur, uid)
-    rule = _get_filter(cur, filter_id, uid)
-    basic = (rule or {}).get("basic") or {}
-    text = f"<b>{_l(language, 'building_floors_question')}</b>\n{_range_text(language, basic.get('total_floors_min'), basic.get('total_floors_max'))}"
-    rows = [
-        [(_l(language, "minimum"), f"bf:{filter_id}:total_floors_min")],
-        [(_l(language, "maximum"), f"bf:{filter_id}:total_floors_max")],
-        [(_l(language, "back"), f"additional:{filter_id}")],
-    ]
-    _screen(cur, uid, chat_id, text, rows)
+    _range_screen(cur, uid, chat_id, filter_id, 'total_floors')
 
 
 def _additional(cur, uid: int, chat_id: int, filter_id: str) -> None:
@@ -841,6 +892,7 @@ def _additional(cur, uid: int, chat_id: int, filter_id: str) -> None:
     if basic.get("deal_type") == ["sale"]:
         rows.append([(_l(language, "documents"), f"ad:{filter_id}:documents")])
     if basic.get("category_key") in {"new", "old"}:
+        rows.append([(_l(language, "floor_label"), f"ad:{filter_id}:floor")])
         rows.append([(_l(language, "building_floors"), f"ad:{filter_id}:building_floors")])
     rows.extend([[(_l(language, "activate"), f"filter:activate:{filter_id}")], [(_l(language, "back"), f"filter:view:{filter_id}")]])
     _screen(cur, uid, chat_id, text, rows)
@@ -962,9 +1014,17 @@ def handle_update(update: dict[str, Any]) -> dict[str, bool]:
             _tg("answerCallbackQuery", {"callback_query_id": callback["id"]})
         cur.execute("SELECT state,language,language_selected FROM users WHERE telegram_user_id=%s",(uid,)); profile=cur.fetchone()
         data, text = callback.get("data", ""), (update.get("message") or {}).get("text", "")
+        # All UUID callback arguments identify filters. Forwarded/stale buttons
+        # must never disclose or mutate another user's filter.
+        for token in data.split(':'):
+            if re.fullmatch(r'[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}', token) and not _get_filter(cur,token,uid):
+                return {'ok':True}
         admin_id=int(os.environ["TELEGRAM_ADMIN_USER_ID"])
         contact=(update.get("message") or {}).get("contact")
         cur.execute("SELECT wizard FROM users WHERE telegram_user_id=%s",(uid,)); wizard=(cur.fetchone() or {}).get("wizard") or {}
+        if wizard.get('await')=='filter_range' and data and not data.startswith(('rg:','rc:')):
+            cur.execute("UPDATE users SET wizard='{}'::jsonb WHERE telegram_user_id=%s",(uid,))
+            wizard={}
         if contact and uid == admin_id:
             identifiers=[]
             if contact.get("user_id"):
@@ -981,14 +1041,21 @@ def handle_update(update: dict[str, Any]) -> dict[str, bool]:
                 _apply_identifier_decision(cur,uid,{**user,"phone_normalized":phone})
             except ValueError:
                 pass
-        if text and wizard.get("await") == "filter_number" and not text.startswith("/"):
+        if text and wizard.get('await')=='filter_range' and not text.startswith('/') and profile['state']=='approved':
+            try:
+                bounds=parse_range(text,wizard['field'])
+                _range_screen(cur,uid,chat_id,wizard['filter_id'],wizard['field'],bounds)
+            except ValueError:
+                _range_screen(cur,uid,chat_id,wizard['filter_id'],wizard['field'],wizard.get('bounds'),error=True)
+            return {'ok':True}
+        if text and wizard.get("await") == "filter_number" and not text.startswith("/") and profile['state']=='approved':
             language = profile["language"]
             try:
                 raw = text.strip().replace(" ", "").replace(",", ".")
                 if not re.fullmatch(r"\d+(?:\.\d+)?", raw):
                     raise ValueError("invalid number")
-                cur.execute("UPDATE users SET wizard='{}'::jsonb WHERE telegram_user_id=%s", (uid,))
                 _apply_number(cur, uid, chat_id, wizard["filter_id"], wizard["field"], raw)
+                cur.execute("UPDATE users SET wizard='{}'::jsonb WHERE telegram_user_id=%s AND wizard->>'await'='filter_number'", (uid,))
             except (ValueError, KeyError):
                 _screen(
                     cur, uid, chat_id,
@@ -1051,7 +1118,7 @@ def handle_update(update: dict[str, Any]) -> dict[str, bool]:
             cur.execute("INSERT INTO user_access_audit(telegram_user_id,action) VALUES(%s,'application')",(uid,))
             _screen(cur,uid,chat_id,t(profile["language"],"sent"),[])
             admin_language=_user_language(cur,admin_id)
-            name=" ".join(x for x in [user.get("first_name"),user.get("last_name")] if x) or _l(admin_language,"not_set")
+            name=escape(" ".join(x for x in [user.get("first_name"),user.get("last_name")] if x) or _l(admin_language,"not_set"))
             username=f"@{user.get('username')}" if user.get("username") else _l(admin_language,"not_set")
             request=_tg("sendMessage",{"chat_id":admin_id,"text":f"<b>{_l(admin_language,'request_title')}</b>\n\nID: <code>{uid}</code>\nUsername: {username}\n{_l(admin_language,'name')}: {name}","parse_mode":"HTML","reply_markup":_keyboard([[(_l(admin_language,"approve"),f"approve:{uid}"),(_l(admin_language,"reject"),f"reject:{uid}")]])})
             cur.execute("""INSERT INTO bot_messages(chat_id,telegram_message_id,kind)
@@ -1136,8 +1203,9 @@ def handle_update(update: dict[str, Any]) -> dict[str, bool]:
             cur.execute("UPDATE filters SET is_enabled=NOT is_enabled,updated_at=now() WHERE id=%s AND telegram_user_id=%s AND deleted_at IS NULL RETURNING is_enabled", (filter_id, uid))
             state = cur.fetchone()
             if state and state["is_enabled"]:
-                _enqueue_today(cur, uid, filter_id)
-            _filter_details(cur, uid, chat_id, filter_id)
+                _offer_today(cur,uid,chat_id,filter_id,profile['language'])
+            else:
+                _filter_details(cur, uid, chat_id, filter_id)
         elif data.startswith("filter:delete:confirm:"):
             filter_id = data.rsplit(":", 1)[1]
             cur.execute("UPDATE filters SET deleted_at=now(),is_enabled=false,updated_at=now() WHERE id=%s AND telegram_user_id=%s", (filter_id, uid))
@@ -1149,15 +1217,43 @@ def handle_update(update: dict[str, Any]) -> dict[str, bool]:
         elif data.startswith("filter:activate:"):
             filter_id=data.rsplit(":",1)[1]
             cur.execute("UPDATE filters SET is_enabled=true,updated_at=now() WHERE id=%s AND telegram_user_id=%s AND deleted_at IS NULL RETURNING id",(filter_id,uid))
-            queued=_enqueue_today(cur,uid,filter_id) if cur.fetchone() else 0
+            if not cur.fetchone():
+                return {'ok':True}
             cur.execute("UPDATE users SET filter_onboarding_completed=true WHERE telegram_user_id=%s",(uid,))
             language=profile["language"]
+            _offer_today(cur,uid,chat_id,filter_id,language)
+        elif data.startswith('today:'):
+            filter_id=data.split(':',1)[1]
+            queued=_enqueue_today(cur,uid,filter_id)
+            language=profile['language']
             note=_l(language,"found",count=queued) if queued else _l(language,"none_today")
             _screen(cur,uid,chat_id,f"<b>{_l(language,'saved')}</b>\n{note}",[[(_l(language,"main"),"main")]])
+        elif data.startswith(('rg:','rc:','rb:')):
+            parts=data.split(':',3)
+            action,filter_id,code=parts[:3]
+            field=RANGE_CODES.get(code)
+            if not field or not _get_filter(cur,filter_id,uid):
+                return {'ok':True}
+            if action=='rg':
+                _range_screen(cur,uid,chat_id,filter_id,field,parse_range(parts[3],field))
+            elif action=='rc':
+                if wizard.get('await')=='filter_range' and wizard.get('filter_id')==filter_id and wizard.get('field')==field:
+                    _range_save(cur,uid,chat_id,filter_id,field,wizard['bounds'])
+            else:
+                cur.execute("UPDATE users SET wizard='{}'::jsonb WHERE telegram_user_id=%s",(uid,))
+                if field in {'floor','total_floors'}:
+                    _additional(cur,uid,chat_id,filter_id)
+                else:
+                    step='area_min' if field in {'area_m2','land_area_m2'} else field+'_min'
+                    previous=_wizard_previous_step(cur,filter_id,step)
+                    _wizard(cur,uid,chat_id,filter_id,previous) if previous else _filter_details(cur,uid,chat_id,filter_id)
         elif data.startswith("wf:"): _wizard_callback(cur,uid,chat_id,data)
         elif data.startswith("num:"):
             _, filter_id, field, value = data.split(":", 3)
-            _apply_number(cur, uid, chat_id, filter_id, field, value)
+            try:
+                _apply_number(cur, uid, chat_id, filter_id, field, value)
+            except ValueError:
+                _range_screen(cur,uid,chat_id,filter_id,field.rsplit('_',1)[0],error=True)
         elif data.startswith("manual:"):
             _, filter_id, field = data.split(":", 2)
             cur.execute("UPDATE users SET wizard=%s::jsonb WHERE telegram_user_id=%s", (json.dumps({"await":"filter_number","filter_id":filter_id,"field":field}), uid))
@@ -1209,6 +1305,7 @@ def handle_update(update: dict[str, Any]) -> dict[str, bool]:
             if field=="seller": _seller_screen(cur,uid,chat_id,fid)
             elif field=="repair": _repair_screen(cur,uid,chat_id,fid)
             elif field=="documents": _documents_screen(cur,uid,chat_id,fid)
+            elif field=='floor': _range_screen(cur,uid,chat_id,fid,'floor')
             else: _building_floors_screen(cur,uid,chat_id,fid)
         elif data.startswith("bf:"):
             _, fid, field = data.split(":", 2)

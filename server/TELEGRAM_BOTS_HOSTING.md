@@ -7,12 +7,12 @@ not a Rent Aggregator Baku project directory.
 /opt/Telegram-bots/
   bots/
     rent-aggregator-baku/  # this bot only
-    scitopus/              # reserved for the independent SciTopus deployment
+    scitopus/              # independent live deployment; do not change
   shared/
     README.md              # neutral operating rules only
 ```
 
-Each bot owns its source tree, Compose project, environment file, PostgreSQL
+Each bot owns its source tree, Compose project, environment file, chosen
 database/volume, workers, logs, routes, Telegram token, webhook secret, ingest
 secret and rate limits. Bots may share only the host, Docker runtime, the
 external `traefik` network and generic monitoring conventions.
@@ -22,7 +22,7 @@ Rent Aggregator Baku routes:
 - webhook: `/telegram-bots/rent-aggregator-baku/webhook`
 - ingest: `/telegram-bots/rent-aggregator-baku/v1/ingest/listings`
 
-There are no legacy route aliases. A future SciTopus deployment must use its
+There are no legacy route aliases. The independent SciTopus deployment must use its
 own `/telegram-bots/scitopus/...` routes and
 must not reference Rent Aggregator Baku service, route, volume, database or
 environment names.

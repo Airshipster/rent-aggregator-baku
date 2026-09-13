@@ -8,15 +8,17 @@ from typing import Any
 import requests
 
 from .utils import env_bool, env_int
+from .telegram_errors import TelegramAPIError
 
 
 class TelegramClient:
-    def __init__(self) -> None:
+    def __init__(self, defer_retries: bool = False) -> None:
         self.token = os.environ["TELEGRAM_BOT_TOKEN"]
         self.base_url = f"https://api.telegram.org/bot{self.token}"
         self.timeout = env_int("REQUEST_TIMEOUT_SECONDS", 20)
         self.protect = env_bool("PROTECT_PRIVATE_CONTENT", True)
         self.session = requests.Session()
+        self.defer_retries = defer_retries
 
     def call(self, method: str, payload: dict[str, Any] | None = None, files: dict[str, Any] | None = None) -> dict[str, Any]:
         response = self.session.post(
@@ -27,7 +29,7 @@ class TelegramClient:
             timeout=self.timeout,
         )
         data = response.json()
-        if response.status_code == 429 and data.get("parameters", {}).get("retry_after"):
+        if not self.defer_retries and response.status_code == 429 and data.get("parameters", {}).get("retry_after"):
             time.sleep(int(data["parameters"]["retry_after"]) + 2)
             response = self.session.post(
                 f"{self.base_url}/{method}",
@@ -38,7 +40,7 @@ class TelegramClient:
             )
             data = response.json()
         if not data.get("ok"):
-            raise RuntimeError(f"telegram {method} failed: {data.get('description')}")
+            raise TelegramAPIError(data)
         return data["result"]
 
     def get_chat(self, chat_id: str) -> dict[str, Any]:

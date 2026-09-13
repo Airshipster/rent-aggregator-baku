@@ -21,6 +21,7 @@ services:
         max-size: "10m"
         max-file: "5"
   app:
+    image: ${RENT_IMAGE:-rent-aggregator-baku:local}
     build:
       context: ..
       dockerfile: server/Dockerfile
@@ -49,6 +50,11 @@ services:
       traefik.http.routers.rent-aggregator-baku-ingest.tls: "true"
       traefik.http.routers.rent-aggregator-baku-ingest.tls.certresolver: le
       traefik.http.routers.rent-aggregator-baku-ingest.service: rent-aggregator-baku
+      traefik.http.routers.rent-aggregator-baku-collector.rule: "Host(`scitopus.com`) && Path(`/telegram-bots/rent-aggregator-baku/v1/collector/status`)"
+      traefik.http.routers.rent-aggregator-baku-collector.priority: "110"
+      traefik.http.routers.rent-aggregator-baku-collector.tls: "true"
+      traefik.http.routers.rent-aggregator-baku-collector.tls.certresolver: le
+      traefik.http.routers.rent-aggregator-baku-collector.service: rent-aggregator-baku
       traefik.http.services.rent-aggregator-baku.loadbalancer.server.port: "8080"
     depends_on:
       postgres:
@@ -60,6 +66,13 @@ services:
       retries: 5
     command: uvicorn server.app:app --host 0.0.0.0 --port 8080
   channel-worker:
+    image: ${RENT_IMAGE:-rent-aggregator-baku:local}
+    healthcheck:
+      test: ["CMD", "python", "-m", "server.healthcheck", "worker-channel"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
     build:
       context: ..
       dockerfile: server/Dockerfile
@@ -75,7 +88,19 @@ services:
       postgres:
         condition: service_healthy
     command: python -m server.worker
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    pids_limit: 100
+    read_only: true
+    tmpfs: ["/tmp:size=32m"]
   private-worker:
+    image: ${RENT_IMAGE:-rent-aggregator-baku:local}
+    healthcheck:
+      test: ["CMD", "python", "-m", "server.healthcheck", "worker-private"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
     build:
       context: ..
       dockerfile: server/Dockerfile
@@ -91,6 +116,43 @@ services:
       postgres:
         condition: service_healthy
     command: python -m server.worker
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    pids_limit: 100
+    read_only: true
+    tmpfs: ["/tmp:size=32m"]
+  collector:
+    image: ${RENT_IMAGE:-rent-aggregator-baku:local}
+    healthcheck:
+      test: ["CMD", "python", "-m", "server.healthcheck", "collector"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://rent_aggregator:${POSTGRES_PASSWORD}@postgres:5432/rent_aggregator
+      SOURCE_START_URL: https://bina.az/kiraye
+      COLLECTOR_INTERVAL_SECONDS: "120"
+      MAX_LISTINGS_PER_RUN: "100"
+      LIST_PAGES_PER_RUN: "2"
+      MAX_DETAIL_FETCHES_PER_RUN: "100"
+    command: python -m server.collector_service
+    restart: unless-stopped
+    cpus: 0.35
+    mem_limit: 256m
+    pids_limit: 100
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    read_only: true
+    tmpfs: ["/tmp:size=32m"]
+    logging: *default-logging
+    depends_on:
+      postgres:
+        condition: service_healthy
 volumes:
   postgres_data:
 networks:

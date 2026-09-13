@@ -1,0 +1,12 @@
+[Unit]
+Description=Rent Aggregator isolated process recovery
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh /opt/Telegram-bots/bots/rent-aggregator-baku/current/server/watchdog.sh
+TimeoutStartSec=90
+Nice=10
+CPUQuota=10%
+MemoryMax=128M

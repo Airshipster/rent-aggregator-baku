@@ -1,0 +1,12 @@
+.git
+.venv*
+backups
+outputs
+node_modules
+**/__pycache__
+**/.env
+**/.env.*
+**/*.pem
+**/*.key
+**/*ed25519*
+state

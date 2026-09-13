@@ -7,11 +7,14 @@ from typing import Any
 
 import requests
 from fastapi import FastAPI, Header, HTTPException, Request
+from starlette.concurrency import run_in_threadpool
 
 from .db import connect, migrate
 from .i18n import t
 from .matching import matches
+from .retention import fresh_for_delivery
 from .bot_ui import handle_update
+from .channel_policy import public_channel_eligible as _public_channel_eligible
 from src.utils import env_int, image_datetime, is_recent, parse_dt
 
 app = FastAPI(title="Rent Aggregator Baku")
@@ -19,18 +22,6 @@ app = FastAPI(title="Rent Aggregator Baku")
 
 def _public_channel_enabled() -> bool:
     return os.getenv("ENABLE_PUBLIC_CHANNEL", "false").lower() in {"1", "true", "yes", "on"}
-
-
-def _public_channel_eligible(payload: dict[str, Any]) -> bool:
-    source_date = image_datetime(payload.get("first_image_url")) or parse_dt(payload.get("updated_at"))
-    return (
-        _public_channel_enabled()
-        and payload.get("channel_candidate", True)
-        and payload.get("deal_type") == "rent"
-        and payload.get("city") == "Bakı"
-        and payload.get("category_slug") in {"menziller/yeni-tikili", "menziller/kohne-tikili"}
-        and is_recent(source_date, env_int("MAX_PUBLIC_AGE_HOURS", 168))
-    )
 
 
 def _verify_ingest(body: bytes, signature: str | None) -> None:
@@ -93,6 +84,24 @@ async def ingest(request: Request, x_signature: str | None = Header(None), x_ide
     _verify_ingest(body, x_signature)
     if not x_idempotency_key:
         raise HTTPException(400, "missing idempotency key")
+    return await run_in_threadpool(_store_ingest, body, x_idempotency_key)
+
+
+@app.post('/telegram-bots/rent-aggregator-baku/v1/collector/status')
+async def collector_status(request: Request, x_signature: str | None = Header(None)):
+    body = await request.body()
+    _verify_ingest(body,x_signature)
+    def status():
+        from .health import beat
+        beat('github-standby',success=True,phase='ready')
+        with connect() as c:
+            row = c.execute("SELECT heartbeat_at > now()-interval '180 seconds' active,details FROM service_health WHERE name='collector'").fetchone()
+        return {'primary_active':bool(row and row['active']),
+                'source_blocked':bool(row and row['details'].get('phase')=='source_blocked')}
+    return await run_in_threadpool(status)
+
+
+def _store_ingest(body: bytes, x_idempotency_key: str) -> dict[str, int]:
     document = json.loads(body)
     listings = document.get("listings") or []
     digest = hashlib.sha256(body).hexdigest()
@@ -100,6 +109,9 @@ async def ingest(request: Request, x_signature: str | None = Header(None), x_ide
     with connect() as conn, conn.cursor() as cur:
         cur.execute("INSERT INTO ingest_requests(idempotency_key,body_sha256) VALUES(%s,%s) ON CONFLICT DO NOTHING RETURNING idempotency_key", (x_idempotency_key,digest))
         if not cur.fetchone():
+            cur.execute("SELECT body_sha256 FROM ingest_requests WHERE idempotency_key=%s", (x_idempotency_key,))
+            if cur.fetchone()["body_sha256"] != digest:
+                raise HTTPException(409, "idempotency key reused with different body")
             return {"received":len(listings),"inserted":0,"queued":0,"duplicate":1}
         for payload in listings:
             source, source_id = payload.get("source", "bina.az"), str(payload["listing_id"])
@@ -121,6 +133,8 @@ async def ingest(request: Request, x_signature: str | None = Header(None), x_ide
                     ON CONFLICT(channel_post_id,task_type) DO NOTHING""", (listing_id,))
                 continue
             if not row["new_row"]:
+                continue
+            if not fresh_for_delivery(payload):
                 continue
             if _public_channel_eligible(payload):
                 cur.execute("""INSERT INTO channel_posts(listing_id,chat_id) VALUES(%s,%s)
@@ -146,7 +160,7 @@ async def telegram_webhook(request: Request, x_telegram_bot_api_secret_token: st
     if not hmac.compare_digest(x_telegram_bot_api_secret_token or "", os.environ["TELEGRAM_WEBHOOK_SECRET"]):
         raise HTTPException(401, "invalid webhook secret")
     update = await request.json()
-    return handle_update(update)
+    return await run_in_threadpool(handle_update, update)
     # Legacy handler retained below temporarily for rollback reference.
     with connect() as conn, conn.cursor() as cur:
         cur.execute("INSERT INTO telegram_updates(update_id) VALUES(%s) ON CONFLICT DO NOTHING RETURNING update_id", (update.get("update_id"),))

@@ -16,6 +16,8 @@ def main() -> None:
         from .collector import main as central_collector_main
         central_collector_main()
         return
+    if not env_bool('ENABLE_LEGACY_TRANSPORT', False):
+        raise RuntimeError('CENTRAL_INGEST_URL is required; legacy transport is disabled')
     stats = RunStats()
     dry_run = env_bool("DRY_RUN", False)
     telegram = None if dry_run and not os.getenv("TELEGRAM_BOT_TOKEN") else TelegramClient()

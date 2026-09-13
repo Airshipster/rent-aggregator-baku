@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 
 from .central_ingest import listing_payload, submit
-from .source_client import SourceClient
+from .source_client import SourceClient, SourceBlockedError
 from .source_parser import SourceParser
 from .utils import env_int, is_recent, sleep_soft
 
@@ -79,16 +79,16 @@ def main() -> None:
         try:
             detail = parser.get_detail(summary.listing_id)
             if detail:
-                deal_type = "rent" if item_filter.get("leased") else "sale"
+                # Search buckets may be stale; the fetched detail is authoritative.
+                deal_type = "rent" if detail.rent_period in {"daily", "monthly"} else "sale"
                 payload = listing_payload(detail, deal_type)
-                payload["rent_period"] = (
-                    "daily" if item_filter.get("paidDaily") else "monthly" if deal_type == "rent" else None
-                )
                 # Only the national newest-feed pass may publish to the public channel.
                 # Rotating city passes are completeness backfill for private filters.
                 payload["channel_candidate"] = "cityId" not in item_filter
                 details.append(payload)
                 submitted_ids.append(summary.listing_id)
+        except SourceBlockedError:
+            raise
         except Exception as exc:
             print(f"detail_error={summary.listing_id}:{type(exc).__name__}")
     removal_cursor=state["removal_cursor"] % max(1,len(seen_order))
@@ -98,6 +98,8 @@ def main() -> None:
         try:
             if not parser.check_exists(listing_id):
                 removed.append({"listing_id":listing_id,"listing_url":f"{parser.client.base_url}/items/{listing_id}","source":"source","is_deleted":True})
+        except SourceBlockedError:
+            raise
         except Exception as exc:
             print(f"removal_check_error={listing_id}:{type(exc).__name__}")
     submit(details+removed)

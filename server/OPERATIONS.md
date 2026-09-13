@@ -1,5 +1,33 @@
 # Server deployment and rollback
 
+## Current deployment hold (2026-09-13)
+
+Do not execute the historical cutover steps below without the audit gates.
+Production app/DB run, but both delivery worker containers are absent. The
+channel backlog is 2519 sends plus 5 removals. The local candidate is not deployed.
+Read `../TECHNICAL_AUDIT_2026-09-13.md` and `../PROJECT_CONTEXT.md` first.
+
+Required before rollout:
+
+1. Restore-test the local dump in isolated PostgreSQL 16, not production.
+2. Reconcile the production schema (including historical `retired` records) with
+   migration baseline. Apply candidate migrations only to the isolated DB first.
+3. Test retry, restart, overlapping filters, blocked users, and uncertain sends.
+   The current local worker still holds a transaction across HTTP: do not claim exactly-once.
+4. Obtain explicit approval for backlog policy, admin test messages and cutover.
+5. Keep `DELIVERY_ENABLED=false` during deployment. An approved timezone-aware
+   `DELIVERY_NOT_BEFORE` is required before enabling it. Older tasks remain held,
+   not deleted or mislabeled sent. This is a cutover guard, not a freshness proof.
+6. Never run the whole shared stack, alter Traefik, or touch another bot's volumes.
+7. Check worker presence, heartbeat/queue progress, failed/dead_letter tasks and
+   actual message IDs. `/healthz` alone checks only app/database availability.
+
+The local snapshot `backups/audit-20260913T0210/database.dump` has a verified
+catalog, **not a verified restore**. All snapshot bytes were streamed to the PC;
+no permanent backup file was created on the server. Its folder is owner-only.
+
+## Historical initial cutover (not an operational runbook)
+
 ## Before changing production
 
 1. Keep the existing GitHub workflow in legacy mode until `CENTRAL_INGEST_URL` and `CENTRAL_INGEST_SHARED_SECRET` are configured.
@@ -15,7 +43,12 @@ Set GitHub Secrets `CENTRAL_INGEST_URL` and `CENTRAL_INGEST_SHARED_SECRET`; then
 
 ## Rollback
 
-Remove `CENTRAL_INGEST_URL` from GitHub Secrets (or set it empty); the workflow immediately resumes its previous direct path. Restore `state/last_seen.json` from the dated backup and reset the repository only to the recorded `git-head.txt` if the code rollback is required. Do not delete PostgreSQL: stop the server stack and retain its volume and immutable payment/audit records for investigation.
+Do not remove `CENTRAL_INGEST_URL`: that used to enable a second, uncoordinated
+transport. The local candidate now fails closed unless legacy transport is
+explicitly opted into. Stop only this project's workers, roll back this project's
+code release, keep delivery paused, and verify DB compatibility. Never automatically
+restore an old database over new users/audit/payment records. Whole-DB restore is
+a separately approved disaster-recovery operation. Retain PostgreSQL and all tasks.
 
 ## Backups and recovery test
 

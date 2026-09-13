@@ -8,7 +8,7 @@ def format_public(item: ListingDetail) -> str:
     location = " · ".join(item.landmarks[:4]) or item.metro or item.district or "Lokasiya dəqiqləşdirilir"
     lines = [
         f"🏠 <b>{escape(fmt_title(item))}</b>",
-        f"💰 {escape(fmt_price(item))} / ay",
+        f"💰 {escape(fmt_price(item))}" + ({'daily':' / gün','monthly':' / ay'}.get(item.rent_period,'')),
         f"📍 {escape(location)}",
         f"📐 {escape(fmt_specs(item))}",
         "",

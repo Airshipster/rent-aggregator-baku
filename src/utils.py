@@ -38,9 +38,10 @@ def now_utc() -> datetime:
 
 def is_recent(value: datetime | None, hours: int) -> bool:
     if value is None:
-        return True
+        return False
     dt = value if value.tzinfo else value.replace(tzinfo=timezone.utc)
-    return dt >= now_utc() - timedelta(hours=hours)
+    now = now_utc()
+    return now - timedelta(hours=hours) <= dt <= now + timedelta(minutes=5)
 
 
 def join_url(base: str, path: str) -> str:
@@ -79,4 +80,7 @@ def image_datetime(url: str | None) -> datetime | None:
     if not match:
         return None
     year, month, day, hour, minute = [int(part) for part in match.groups()]
-    return datetime(year, month, day, hour, minute, tzinfo=timezone(timedelta(hours=4)))
+    try:
+        return datetime(year, month, day, hour, minute, tzinfo=timezone(timedelta(hours=4)))
+    except ValueError:
+        return None

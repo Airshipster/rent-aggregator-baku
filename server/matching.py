@@ -29,10 +29,12 @@ def matches(payload: dict[str, Any], basic: dict[str, Any], additional: dict[str
     for field, rule in additional.items():
         if not isinstance(rule, dict) or ("values" not in rule and "include_unknown" not in rule):
             continue
-        value, values = _value(payload, field), set(rule["values"])
+        value, values = _value(payload, field), set(rule.get("values") or [])
         if value is None or value == "unknown":
             if not rule.get("include_unknown", not rule.get("strict", False)):
                 return False
+        elif "values" not in rule:
+            continue
         elif isinstance(value, list):
             if not values.intersection(value):
                 return False

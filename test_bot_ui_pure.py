@@ -1,11 +1,5 @@
-import sys
-import types
 import unittest
 
-
-fake_db = types.ModuleType("server.db")
-fake_db.connect = None
-sys.modules.setdefault("server.db", fake_db)
 
 from server import bot_ui
 

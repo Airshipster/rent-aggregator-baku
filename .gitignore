@@ -5,3 +5,8 @@ __pycache__/
 .pytest_cache/
 tmp/
 state/*.tmp
+.venv-audit/
+backups/
+outputs/audit-*/
+outputs/postgresql-16/
+outputs/postgresql-16-windows.zip

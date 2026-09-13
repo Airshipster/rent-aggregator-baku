@@ -95,7 +95,7 @@ def specs(item: ListingDetail, language: str = "az") -> str:
 
 
 def seller(item: ListingDetail) -> str:
-    return "#agentlik" if item.seller_type == "agency" else "#mülkiyyətçi"
+    return {'agency':'#agentlik','owner':'#mülkiyyətçi'}.get(item.seller_type,'#naməlum')
 
 
 def description(item: ListingDetail, language: str = "az") -> str:

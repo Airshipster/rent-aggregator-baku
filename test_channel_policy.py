@@ -20,6 +20,7 @@ class ChannelPolicyTests(unittest.TestCase):
         return {
             "channel_candidate": True,
             "deal_type": "rent",
+            "rent_period": "monthly",
             "city": "Bakı",
             "category_slug": "menziller/yeni-tikili",
             "first_image_url": image_url(photo_date),
